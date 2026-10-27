@@ -24,6 +24,9 @@ dependencies = [
     "pycocotools>=2.0.11",
     "einops>=0.8.2",
     "psutil>=7.2.2",
+    "fastapi>=0.162.0",
+    "uvicorn[standard]>=0.54.0",
+    "python-multipart>=0.0.32",
 ]
 
 [project.scripts]
@@ -63,7 +66,7 @@ target-version = "py312"
 select = ["E", "F", "I", "UP", "B"]
 
 [tool.ruff.lint.flake8-bugbear]
-extend-immutable-calls = ["typer.Argument", "typer.Option"]
+extend-immutable-calls = ["typer.Argument", "typer.Option", "fastapi.File"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

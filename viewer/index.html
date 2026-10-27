@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Loci</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    {"imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }}
+  </script>
+</head>
+<body>
+  <main>
+    <section id="stage">
+      <canvas id="view"></canvas>
+      <header class="topbar">
+        <div class="brand">Loci</div>
+        <select id="session" aria-label="Capture session"></select>
+      </header>
+      <form id="askform" class="askbar" autocomplete="off">
+        <input id="q" type="text" placeholder="Ask about any place you've walked through…" aria-label="Question">
+        <button type="button" id="mic" title="Ask by voice" aria-label="Ask by voice">
+          <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 15a3 3 0 0 0 3-3V6a3 3 0 1 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-2.08A7 7 0 0 0 19 12h-2Z"/></svg>
+        </button>
+        <button type="submit" id="go">Ask</button>
+      </form>
+      <div id="legend" class="legend"></div>
+    </section>
+
+    <aside id="panel">
+      <div id="empty" class="empty">
+        <h2>Private spatial memory</h2>
+        <p>Every face, number plate and screen was blurred before anything was saved. Ask where something
+          is, what state it was in, or what you passed.</p>
+      </div>
+
+      <div id="result" hidden>
+        <p id="question" class="question"></p>
+        <p id="answer" class="answer"></p>
+        <div id="badges" class="badges"></div>
+        <figure id="evidence">
+          <img id="evimg" alt="Redacted evidence frame">
+          <figcaption id="evcap"></figcaption>
+        </figure>
+        <dl id="facts" class="facts"></dl>
+        <details id="goal">
+          <summary>Robot goal <button type="button" id="copy" class="ghost">Copy</button></summary>
+          <pre id="goaljson"></pre>
+        </details>
+        <details id="trail">
+          <summary>Evidence trail</summary>
+          <ol id="trace"></ol>
+        </details>
+      </div>
+
+      <section id="privacy" class="privacy">
+        <h3>Privacy ledger</h3>
+        <div id="ledger"></div>
+      </section>
+    </aside>
+  </main>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

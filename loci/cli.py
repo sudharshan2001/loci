@@ -231,6 +231,7 @@ STAGES = [
     ("attributes", "attributes.json"),
     ("transcribe", "utterances.json"),
     ("store", None),
+    ("check", None),
 ]
 
 
@@ -298,6 +299,31 @@ def ask(
     typer.echo(json.dumps({k: v for k, v in ans.items() if k != "answer"}, indent=2, ensure_ascii=False))
     if show_trace:
         typer.echo(json.dumps(trace, indent=2, ensure_ascii=False)[:8000])
+
+
+@app.command()
+def check(session: str) -> None:
+    """Leaving check: the agent flags what is worth a heads-up (states, valuables, spoken notes)."""
+    from loci.agent.leaving import run as leaving
+    from loci.agent.tools import Memory
+    from loci.config import repo_path
+    from loci.llm import glimmer_server
+    from loci.stages.store import connect
+
+    mem = Memory(connect(repo_path(_cfg()["paths"]["memory_db"])))
+    with glimmer_server(repo_path("debug") / "glimmer_check.log") as url:
+        alerts = leaving(mem, session, url)
+    typer.echo(f"{session}: {len(alerts)} alerts")
+    for a in alerts:
+        typer.echo(f"  [{a.get('kind')}] {a['text']}  ({', '.join(a.get('evidence', []))})")
+
+
+@app.command()
+def serve(host: str = "127.0.0.1", port: int = 8000) -> None:
+    """API + viewer at http://host:port (starts Glimmer, or reuses a running one)."""
+    import uvicorn
+
+    uvicorn.run("loci.api:app", host=host, port=port, log_level="info")
 
 
 @app.command()
