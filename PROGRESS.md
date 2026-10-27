@@ -62,3 +62,32 @@ SAM 3.1 video and faster-whisper (see `docs/benchmarks.md`):
   keyframe for detection, video tracks only as an association hint; identity resolved in 3D (M7).
 - faster-whisper small works (5× real time or better); passes WAV samples directly because PyAV 19 breaks
   its built-in decoder.
+
+## M3–M9 – Pipeline and agent, first end-to-end run (Oct 27–28, on a sample desk clip)
+
+All stages are written and run end to end with `loci build`; real-footage acceptance checks wait for the
+developer's own `home.mp4` / `street.mp4` (Oct 28).
+
+Works (desk sample, 23 keyframes):
+- redact: screens and on-screen faces blurred, keyboard/mouse/notebook stay sharp. 34 faces, 56 screens.
+- name: Glimmer lists the right 16 objects (two laptops, external keyboard, mouse, mouse pad, pink notebook,
+  pen, webcam, outlet, monitor, chair).
+- track: 114 s for 23 frames x 27 phrases. A confused-part filter drops "keys" detections inside keyboards
+  and laptops (all 196 false "keys" were keyboard keys).
+- geometry: MapAnything + gravity alignment. "Up" now comes from the largest horizontal plane (RANSAC); the
+  camera-based estimate was 16° off when looking down at a desk, which broke every "on" relation.
+- lift/associate/relations: 21 objects; 10 correctly "on the desk".
+- agent: `loci ask` answers with verified evidence, position and robot goal. 7 of 7 test questions verified
+  on the first attempt after fixes; latency 14–49 s (refusals 16–23 s).
+
+Fixes made after the first run:
+- Object boxes are the robust union of all views (median boxes made the desk 0.5 m wide).
+- Area labels smoothed (isolated disagreeing samples are overruled).
+- Agent: empty search returns a "nothing matching" note; last step offers no tools so it must answer;
+  server 500s (malformed tool call at temperature 1.0) are retried; one merged system prompt.
+
+Known issues:
+- The far end of a long desk is "left of the desk": no single view sees the whole desk.
+- Duplicate objects for things seen only at the frame edge (three chairs for one).
+- Screen on/off is unreliable after blurring (blurred screens look dark).
+- Glimmer server start is 1–9 min from the data HDD (see improvement.md). geometry stage 5 min, mostly load.

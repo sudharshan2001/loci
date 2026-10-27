@@ -1,4 +1,4 @@
-from loci.stages.name import fill_nearest, normalise, spread
+from loci.stages.name import fill_nearest, normalise, smooth, spread
 
 
 def test_normalise_cleans_and_dedupes() -> None:
@@ -23,3 +23,8 @@ def test_fill_nearest() -> None:
 def test_spread_covers_ends() -> None:
     assert spread(80, 8)[0] == 0 and spread(80, 8)[-1] == 79
     assert spread(3, 8) == [0, 1, 2]
+
+
+def test_smooth_overrules_isolated_label() -> None:
+    assert smooth(["office", "bedroom", "office", "office"]) == ["office"] * 4
+    assert smooth(["kitchen", "kitchen", "bedroom", "bedroom"]) == ["kitchen", "kitchen", "bedroom", "bedroom"]

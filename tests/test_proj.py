@@ -61,3 +61,30 @@ def test_inliers_and_box_ignore_outliers() -> None:
     assert not keep[:5].any() and keep[5:].mean() > 0.95
     c, lo, hi = robust_box(pts[keep])
     assert np.abs(c).max() < 0.02 and (hi - lo).max() < 0.3
+
+
+def test_plane_up_finds_tilted_floor() -> None:
+    from loci.stages.geometry import plane_up
+
+    rng = np.random.default_rng(1)
+    true_up = np.array([0.1, -0.99, 0.05])
+    true_up /= np.linalg.norm(true_up)
+    e1 = np.cross(true_up, [1.0, 0, 0])
+    e1 /= np.linalg.norm(e1)
+    e2 = np.cross(true_up, e1)
+    floor = rng.uniform(-2, 2, (3000, 1)) * e1 + rng.uniform(-2, 2, (3000, 1)) * e2
+    clutter = rng.uniform(-2, 2, (1000, 3))
+    prior = np.array([0.4, -0.9, -0.2])  # biased camera estimate
+    up, frac = plane_up(np.vstack([floor, clutter]), prior / np.linalg.norm(prior))
+    assert up @ true_up > 0.999 and frac > 0.5
+
+
+def test_rotation_between() -> None:
+    from loci.stages.geometry import rotation_between
+
+    a = np.array([0.098, -0.911, -0.4])
+    a /= np.linalg.norm(a)
+    R = rotation_between(a, np.array([0.0, -1.0, 0.0]))
+    assert np.allclose(R @ a, [0, -1, 0], atol=1e-6) and np.allclose(R @ R.T, np.eye(3), atol=1e-6)
+    R = rotation_between(np.array([0.0, 1.0, 0.0]), np.array([0.0, -1.0, 0.0]))
+    assert np.allclose(R @ [0, 1.0, 0], [0, -1, 0], atol=1e-6)

@@ -23,6 +23,34 @@ def iou(a: np.ndarray, b: np.ndarray) -> float:
     return float(inter / union) if union else 0.0
 
 
+# small-object prompts that SAM also fires on parts of bigger things (e.g. "keys" on keyboard keys):
+# label -> substrings of container labels that cause the confusion
+PART_CONFUSERS: dict[str, tuple[str, ...]] = {
+    "keys": ("keyboard", "laptop"),
+    "key": ("keyboard", "laptop"),
+    "keychain": ("keyboard", "laptop"),
+    "remote": ("keyboard", "laptop"),
+    "remote control": ("keyboard", "laptop"),
+}
+
+
+def drop_confused_parts(dets: list[dict[str, Any]], inside: float = 0.7) -> list[dict[str, Any]]:
+    """Drop detections of confusable small-object labels that lie mostly inside a confusing container."""
+    out = []
+    for d in dets:
+        conf = PART_CONFUSERS.get(d["label"])
+        if conf:
+            area = max(1, int(d["mask"].sum()))
+            if any(
+                any(c in o["label"] for c in conf) and (d["mask"] & o["mask"]).sum() / area >= inside
+                for o in dets
+                if o is not d
+            ):
+                continue
+        out.append(d)
+    return out
+
+
 def suppress_across_labels(dets: list[dict[str, Any]], thresh: float = 0.85) -> list[dict[str, Any]]:
     """Greedy NMS over masks regardless of label; a suppressed detection's label becomes an alias.
 

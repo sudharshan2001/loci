@@ -43,10 +43,15 @@ class _Obj:
         self._update()
 
     def _update(self) -> None:
+        # each view sees part of an object, so the box is the union of views (robust percentiles)
         c = np.array([m["centroid"] for m in self.members])
-        half = np.array([(np.array(m["box_max"]) - m["box_min"]) / 2 for m in self.members])
+        lo = np.array([m["box_min"] for m in self.members])
+        hi = np.array([m["box_max"] for m in self.members])
         self.centroid = np.median(c, 0)
-        self.half = np.median(half, 0)
+        q = 10 if len(self.members) >= 5 else 0
+        self.lo = np.minimum(np.percentile(lo, q, 0), self.centroid)
+        self.hi = np.maximum(np.percentile(hi, 100 - q, 0), self.centroid)
+        self.half = (self.hi - self.lo) / 2
 
     def as_match(self) -> dict:
         return {"label": self.label, "aliases": list(self.aliases)}
@@ -60,7 +65,7 @@ class _Obj:
         size = float(np.linalg.norm(self.half) + np.linalg.norm((np.array(ob["box_max"]) - ob["box_min"]) / 2))
         if d <= max(min_dist, 0.6 * size):
             return d
-        if box_iou(self.centroid - self.half, self.centroid + self.half, ob["box_min"], ob["box_max"]) >= iou_thresh:
+        if box_iou(self.lo, self.hi, ob["box_min"], ob["box_max"]) >= iou_thresh:
             return d
         return None
 
@@ -99,8 +104,8 @@ def associate(observations: list[dict], min_dist: float = 0.25, iou_thresh: floa
                 "label": o.label,
                 "aliases": sorted(o.aliases - {o.label}),
                 "centroid": o.centroid.round(4).tolist(),
-                "box_min": (o.centroid - o.half).round(4).tolist(),
-                "box_max": (o.centroid + o.half).round(4).tolist(),
+                "box_min": o.lo.round(4).tolist(),
+                "box_max": o.hi.round(4).tolist(),
                 "extent_m": (2 * o.half).round(3).tolist(),
                 "first_seen": min(m["t"] for m in ms),
                 "last_seen": max(m["t"] for m in ms),

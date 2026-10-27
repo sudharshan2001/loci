@@ -49,6 +49,15 @@ def normalise(phrases: list[str], max_words: int = 4) -> list[str]:
     return out
 
 
+def smooth(labels: list[str]) -> list[str]:
+    """Overrule isolated labels: one sample that disagrees with both (agreeing) neighbours takes theirs."""
+    out = list(labels)
+    for i in range(1, len(labels) - 1):
+        if labels[i - 1] == labels[i + 1] != labels[i]:
+            out[i] = labels[i - 1]
+    return out
+
+
 def fill_nearest(times: list[float], labelled: dict[int, str]) -> list[str]:
     """Give every keyframe the label of the nearest labelled keyframe in time."""
     idx = np.array(sorted(labelled))
@@ -69,7 +78,9 @@ def run(session: Session, namer: Namer, default_vocab: list[str], n_images: int 
     named = namer.name_objects([files[i] for i in spread(len(files), n_images)], scene)
     vocab = normalise(list(default_vocab) + named)
 
-    labelled = {i: namer.label_area(files[i], scene) for i in range(0, len(files), area_every)}
+    sampled = list(range(0, len(files), area_every))
+    raw = [namer.label_area(files[i], scene) for i in sampled]
+    labelled = dict(zip(sampled, smooth(raw), strict=True))
     areas = fill_nearest([k["t"] for k in kfs], labelled)
 
     result = {
@@ -77,7 +88,7 @@ def run(session: Session, namer: Namer, default_vocab: list[str], n_images: int 
         "named": named,
         "vocab": vocab,
         "areas": areas,
-        "area_samples": {str(i): a for i, a in labelled.items()},
+        "area_samples": {str(i): a for i, a in zip(sampled, raw, strict=True)},
     }
     session.write(session.vocab, result)
     log.info("%s: %d phrases (%d from Glimmer), areas %s", session.id, len(vocab), len(named), sorted(set(areas)))

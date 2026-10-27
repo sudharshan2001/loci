@@ -90,14 +90,23 @@ def image_part(path: Path) -> dict[str, Any]:
     return {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
 
 
-def chat(base_url: str, messages: list[dict], strength: str = "low", **kw: Any) -> dict[str, Any]:
-    """One chat completion. Returns the raw message dict (content, reasoning_content, tool_calls)."""
-    body = {
-        "messages": [{"role": "system", "content": f"Reasoning strength: {strength}"}, *messages],
-        **SAMPLING,
-        **kw,
-    }
-    r = requests.post(f"{base_url}/chat/completions", json=body, timeout=600)
+def chat(base_url: str, messages: list[dict], strength: str = "low", retries: int = 2, **kw: Any) -> dict[str, Any]:
+    """One chat completion. Returns the raw message dict (content, reasoning_content, tool_calls).
+
+    Reasoning strength goes at the top of the (single) system message. Server errors are retried: at
+    temperature 1.0 the model occasionally emits a malformed tool call that llama.cpp rejects with a 500.
+    """
+    head = f"Reasoning strength: {strength}"
+    if messages and messages[0]["role"] == "system":
+        messages = [{"role": "system", "content": f"{head}\n\n{messages[0]['content']}"}, *messages[1:]]
+    else:
+        messages = [{"role": "system", "content": head}, *messages]
+    body = {"messages": messages, **SAMPLING, **kw}
+    for attempt in range(retries + 1):
+        r = requests.post(f"{base_url}/chat/completions", json=body, timeout=600)
+        if r.status_code < 500 or attempt == retries:
+            break
+        log.warning("Glimmer server error %d (attempt %d): %s", r.status_code, attempt + 1, r.text[:200])
     r.raise_for_status()
     return r.json()["choices"][0]["message"]
 

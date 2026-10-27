@@ -20,8 +20,56 @@ log = logging.getLogger(__name__)
 
 
 def estimate_up(poses: np.ndarray) -> np.ndarray:
+    """Rough up from the cameras: minus the mean camera y-axis. Biased when the camera pitches down."""
     down = poses[:, :3, 1].mean(0)
     return -down / (np.linalg.norm(down) + 1e-9)
+
+
+def plane_up(
+    pts: np.ndarray, prior: np.ndarray, max_angle_deg: float = 40, thresh: float = 0.02, iters: int = 400
+) -> tuple[np.ndarray, float]:
+    """Normal of the largest roughly-horizontal plane (floor, table top) via RANSAC, oriented like prior.
+
+    Returns (up, inlier fraction). Falls back to prior when no plane is found.
+    """
+    rng = np.random.default_rng(0)
+    if len(pts) > 60_000:
+        pts = pts[rng.choice(len(pts), 60_000, replace=False)]
+    cos_max = np.cos(np.radians(max_angle_deg))
+    best_n, best_a, best_count = prior, None, 0
+    for _ in range(iters):
+        a, b, c = pts[rng.choice(len(pts), 3, replace=False)]
+        n = np.cross(b - a, c - a)
+        norm = np.linalg.norm(n)
+        if norm < 1e-9:
+            continue
+        n /= norm
+        if abs(n @ prior) < cos_max:
+            continue
+        count = int((np.abs((pts - a) @ n) < thresh).sum())
+        if count > best_count:
+            best_n, best_a, best_count = n, a, count
+    if best_a is None:
+        return prior, 0.0
+    # refine the normal with least squares on the inliers
+    inl = pts[np.abs((pts - best_a) @ best_n) < thresh]
+    if len(inl) >= 3:
+        _, _, vt = np.linalg.svd(inl - inl.mean(0), full_matrices=False)
+        best_n = vt[2]
+    best_n = best_n if best_n @ prior > 0 else -best_n
+    return best_n / np.linalg.norm(best_n), best_count / len(pts)
+
+
+def rotation_between(a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Rotation matrix taking unit vector a onto unit vector b (Rodrigues)."""
+    a, b = a / np.linalg.norm(a), b / np.linalg.norm(b)
+    v, c = np.cross(a, b), float(a @ b)
+    if c < -1 + 1e-9:  # opposite: rotate 180 degrees about any axis orthogonal to a
+        axis = np.cross(a, [1.0, 0, 0] if abs(a[0]) < 0.9 else [0, 1.0, 0])
+        axis /= np.linalg.norm(axis)
+        return 2 * np.outer(axis, axis) - np.eye(3)
+    vx = np.array([[0, -v[2], v[1]], [v[2], 0, -v[0]], [-v[1], v[0], 0]])
+    return np.eye(3) + vx + vx @ vx / (1 + c)
 
 
 def _cat(preds: list[dict], key: str) -> np.ndarray:
@@ -98,13 +146,28 @@ def run(
                 if inst["exclude"]:
                     keep[inst["keyframe"]] &= ~map_mask(decode(inst["mask"]), pm)
 
+    # gravity-align the world: rotate so the largest horizontal plane's normal is -y (OpenCV: y down)
+    prior = estimate_up(poses)
+    up_ma, plane_frac = plane_up(pts3d[valid], prior)
+    R = rotation_between(up_ma, np.array([0.0, -1.0, 0.0]))
+    poses = poses.copy()
+    poses[:, :3, :3] = R @ poses[:, :3, :3]
+    poses[:, :3, 3] = poses[:, :3, 3] @ R.T
+    pts3d = pts3d @ R.T
+    up = np.array([0.0, -1.0, 0.0])
+    tilt = np.degrees(np.arccos(np.clip(up_ma @ prior, -1, 1)))
+    log.info(
+        "gravity from largest horizontal plane (%.0f%% of points), %.1f deg from camera estimate",
+        100 * plane_frac,
+        tilt,
+    )
+
     pts, cols = pts3d[keep], rgb[keep]
     if len(pts) > max_points:
         sel = np.random.default_rng(0).choice(len(pts), max_points, replace=False)
         pts, cols = pts[sel], cols[sel]
     write_ply(session.ply, pts, cols)
 
-    up = estimate_up(poses)
     cams = poses[:, :3, 3]
     np.savez(
         session.geometry,
@@ -115,6 +178,7 @@ def run(
         valid=valid,
         pts3d=pts3d.astype(np.float16),
         up=up.astype(np.float32),
+        world_from_mapanything=R.astype(np.float32),
         preproc=np.array([pm.src_w, pm.src_h, pm.scale, pm.left, pm.top, pm.out_w, pm.out_h], np.float64),
         keyframe_index=np.array([k["index"] for k in kfs]),
     )

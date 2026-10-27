@@ -109,9 +109,16 @@ def call_tool(mem: Memory, name: str, args: dict[str, Any]) -> Any:
     if fn is None or name not in {t[0] for t in TOOLS}:
         return {"error": f"unknown tool {name}"}
     try:
-        return fn(**args)
+        result = fn(**args)
     except TypeError as e:
         return {"error": f"bad arguments for {name}: {e}"}
+    if result == []:
+        return {
+            "results": [],
+            "note": "Nothing matching in any capture. Try at most one other wording; "
+            "if that also finds nothing, answer that it was not seen.",
+        }
+    return result
 
 
 def complete(ans: dict[str, Any], mem: Memory) -> dict[str, Any]:
@@ -182,8 +189,12 @@ def ask(question: str, mem: Memory, base_url: str, max_steps: int = 8, strength:
     candidates: list[dict] = []
     for attempt in range(2):
         ans = None
-        for _ in range(max_steps):
-            msg = chat(base_url, messages, strength=strength, tools=tool_schema())
+        for step in range(max_steps):
+            # last step: no tools offered, so the model has to give its final answer
+            last = step == max_steps - 1
+            if last:
+                messages.append({"role": "user", "content": "Stop using tools. Reply with only the final JSON now."})
+            msg = chat(base_url, messages, strength=strength, **({} if last else {"tools": tool_schema()}))
             calls = msg.get("tool_calls") or []
             messages.append(
                 {"role": "assistant", "content": msg.get("content") or "", "tool_calls": calls}

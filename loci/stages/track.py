@@ -14,7 +14,7 @@ import time
 import cv2
 import numpy as np
 
-from loci.masks import encode, suppress_across_labels
+from loci.masks import drop_confused_parts, encode, suppress_across_labels
 from loci.session import Session
 
 log = logging.getLogger(__name__)
@@ -56,7 +56,9 @@ def run(
                         continue
                     d = {"label": phrase, "score": float(sc), "mask": m}
                     (excluded if phrase in exclude_phrases else dets).append(d)
-        for j, d in enumerate([*suppress_across_labels(dets), *({**e, "aliases": []} for e in excluded)]):
+        for j, d in enumerate(
+            [*suppress_across_labels(drop_confused_parts(dets)), *({**e, "aliases": []} for e in excluded)]
+        ):
             ys, xs = np.nonzero(d["mask"])
             instances.append(
                 {
