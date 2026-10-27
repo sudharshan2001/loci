@@ -21,6 +21,8 @@ models:
     mmproj: checkpoints/glimmer/mmproj-Muse-Glimmer-30B-BF16.gguf
     server_bin: ../llama.cpp/build/bin/llama-server
     port: 8001
+    # OpenAI-compatible endpoint. Local llama-server by default; point at a hosted Glimmer to switch.
+    base_url: http://127.0.0.1:8001/v1
     ctx: 16384
     n_gpu_layers: 99
   whisper:

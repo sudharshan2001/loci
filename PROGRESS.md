@@ -19,3 +19,14 @@ Known issues:
 - Loading `sam3.1_multiplex.pt` into the image model reports 4 missing `convs.3` keys; masks look correct.
 - SAM 3.1 multiplex video predictor defaults to FlashAttention-3 (Hopper only); must pass `use_fa3=False`.
 - Hugging Face downloads stall and do not resume with hf_xet; using resumable parallel HTTP ranges instead.
+
+## M1 – Capture / extract (Oct 27, partial)
+
+Works:
+- `loci extract <video>`: candidates at 4 fps, sharpest per equal time bin above the blur floor, cap 80;
+  16 kHz mono `audio.wav`; raw frames only in `raw_tmp/`; `keyframes.json` with frame, time, sharpness.
+- Tested on 11 short sample clips (3–37 s): 1–6 s per clip, max keyframe gap 0.5–1.25 s.
+
+Pending:
+- Acceptance on the developer's own `home.mp4` / `street.mp4`: lit burner and every shop sign must appear
+  in at least one keyframe (add frames around them if not).
