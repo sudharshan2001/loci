@@ -18,7 +18,7 @@ models:
   glimmer:
     quant: UD-Q3_K_XL
     model: checkpoints/glimmer/Muse-Glimmer-30B-UD-Q3_K_XL.gguf
-    mmproj: checkpoints/glimmer/mmproj-Muse-Glimmer-30B-BF16.gguf
+    mmproj: checkpoints/glimmer/mmproj-Muse-Glimmer-30B-Q8_0.gguf  # BF16 (3.7 GB) does not fit next to Q3
     server_bin: ../llama.cpp/build/bin/llama-server
     port: 8001
     # OpenAI-compatible endpoint. Local llama-server by default; point at a hosted Glimmer to switch.

@@ -46,3 +46,10 @@ MapAnything (Apache), 518 px long side, bf16, memory-efficient inference (sample
 - Median depth and metric scale stable across view counts (1.8 m, ×1.39). Desk sample reconstructs
   recognisably (desk, laptop, notebook, keyboard, mouse pad, wall corner); camera path plausible.
 - 80 keyframes per session fits in 16 GB with ~3 GB headroom.
+
+Glimmer Q3 (see `docs/benchmarks.md`):
+- BF16 mmproj does not fit on the GPU next to Q3 (OOM). Q8_0 mmproj does: all layers + vision on GPU,
+  14.7 GB, 49 tok/s, text 4–10 s, image 6–7 s, tool call 1.9 s with a correct `search_objects` call.
+- Auto-fit (some layers on CPU) drops to 16 tok/s; vision on CPU makes images 27 s.
+- Reasoning strength via system prompt works: high gives 2–3× the reasoning tokens of low.
+- Decision: Q3_K_XL + Q8_0 mmproj fully on GPU. Q4 still to measure (expected slower, does not fit).

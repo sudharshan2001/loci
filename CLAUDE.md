@@ -97,7 +97,7 @@ plus small items placed on purpose):
 - numpy is overridden to `>=2` (sam3 pins `<2`; mapanything's rerun-sdk needs `>=2`). SAM 3 works with it.
 - llama.cpp built with CUDA at `../llama.cpp/build/bin/llama-server` (outside the repo).
 - `checkpoints/` (gitignored): `sam3.1/`, `map-anything-apache/`, `glimmer/` (UD-Q3_K_XL, UD-Q4_K_XL,
-  mmproj BF16), plus benchmark-only `DA3NESTED-GIANT-LARGE-1.1`, `moge-3-vit{l,g}`, `vggt_omega_1b_512.pt`
+  mmproj Q8_0 + BF16), plus benchmark-only `DA3NESTED-GIANT-LARGE-1.1`, `moge-3-vit{l,g}`, `vggt_omega_1b_512.pt`
   (symlinks to the developer's existing weights).
 - Measure free VRAM before each stage and log the peak after it.
 
@@ -119,7 +119,7 @@ All Meta API calls go through `loci/cloud/meta_api.py` (retries, timeouts, disk 
 llama-server start (confirm flags with `--help`):
 ```
 llama-server -m checkpoints/glimmer/Muse-Glimmer-30B-UD-Q3_K_XL.gguf \
-  --mmproj checkpoints/glimmer/mmproj-Muse-Glimmer-30B-BF16.gguf --jinja -c 16384 -ngl 99 \
+  --mmproj checkpoints/glimmer/mmproj-Muse-Glimmer-30B-Q8_0.gguf --jinja -c 16384 -ngl 99 \
   --cache-type-k q8_0 --cache-type-v q8_0 --port 8001
 ```
 Start it only for stages that need it; stop it before SAM 3.1 or MapAnything run.

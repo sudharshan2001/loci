@@ -20,8 +20,10 @@ log = logging.getLogger("smoke.mapanything")
 def write_ply(path: Path, pts: np.ndarray, rgb: np.ndarray) -> None:
     from plyfile import PlyData, PlyElement
 
-    v = np.empty(len(pts), dtype=[("x", "f4"), ("y", "f4"), ("z", "f4"),
-                                  ("red", "u1"), ("green", "u1"), ("blue", "u1")])
+    v = np.empty(
+        len(pts),
+        dtype=[("x", "f4"), ("y", "f4"), ("z", "f4"), ("red", "u1"), ("green", "u1"), ("blue", "u1")],
+    )
     v["x"], v["y"], v["z"] = pts.T
     v["red"], v["green"], v["blue"] = rgb.T
     PlyData([PlyElement.describe(v, "vertex")]).write(str(path))
@@ -57,8 +59,14 @@ def main() -> None:
         torch.cuda.reset_peak_memory_stats()
         t1 = time.perf_counter()
         with torch.no_grad():
-            preds = model.infer(views, memory_efficient_inference=True, use_amp=True, amp_dtype="bf16",
-                                apply_mask=True, mask_edges=True)
+            preds = model.infer(
+                views,
+                memory_efficient_inference=True,
+                use_amp=True,
+                amp_dtype="bf16",
+                apply_mask=True,
+                mask_edges=True,
+            )
         torch.cuda.synchronize()
         dt = time.perf_counter() - t1
         poses = torch.cat([p["camera_poses"] for p in preds]).float().cpu().numpy()
@@ -66,9 +74,15 @@ def main() -> None:
         path_m = float(np.linalg.norm(np.diff(cams, axis=0), axis=1).sum())
         depth = torch.cat([p["depth_z"] for p in preds]).float().cpu().numpy()
         scale = float(preds[0]["metric_scaling_factor"].float().mean())
-        row = {"views": n, "seconds": round(dt, 1), "peak_vram_gb": round(torch.cuda.max_memory_allocated() / 1e9, 2),
-               "hw": list(depth.shape[1:3]), "median_depth_m": round(float(np.median(depth[depth > 0])), 2),
-               "camera_path_m": round(path_m, 2), "metric_scale": round(scale, 3)}
+        row = {
+            "views": n,
+            "seconds": round(dt, 1),
+            "peak_vram_gb": round(torch.cuda.max_memory_allocated() / 1e9, 2),
+            "hw": list(depth.shape[1:3]),
+            "median_depth_m": round(float(np.median(depth[depth > 0])), 2),
+            "camera_path_m": round(path_m, 2),
+            "metric_scale": round(scale, 3),
+        }
         rows.append(row)
         log.info("%s", row)
 

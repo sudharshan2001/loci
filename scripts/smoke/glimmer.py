@@ -88,7 +88,8 @@ def main() -> None:
     ap.add_argument("--model", required=True)
     ap.add_argument("--mmproj", required=True)
     ap.add_argument("--image", required=True)
-    ap.add_argument("--ngl", default="99")
+    ap.add_argument("--ngl", default="99", help='layers on GPU, or "auto" for llama.cpp --fit')
+    ap.add_argument("--mmproj-gpu", action=argparse.BooleanOptionalAction, default=True)
     ap.add_argument("--ctx", default="16384")
     ap.add_argument("--port", type=int, default=8001)
     ap.add_argument("--out", required=True)
@@ -106,8 +107,6 @@ def main() -> None:
         "--jinja",
         "-c",
         args.ctx,
-        "-ngl",
-        args.ngl,
         "--cache-type-k",
         "q8_0",
         "--cache-type-v",
@@ -115,6 +114,11 @@ def main() -> None:
         "--port",
         str(args.port),
     ]
+    # "auto" leaves layer placement to llama.cpp's --fit
+    if args.ngl != "auto":
+        cmd += ["-ngl", args.ngl]
+    if not args.mmproj_gpu:
+        cmd += ["--no-mmproj-offload"]
     log.info("starting: %s", " ".join(cmd))
     logf = open(Path(args.out).with_suffix(".server.log"), "w")
     proc = subprocess.Popen(cmd, stdout=logf, stderr=subprocess.STDOUT)

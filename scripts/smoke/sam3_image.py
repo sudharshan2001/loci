@@ -60,8 +60,16 @@ def main() -> None:
                 dt = time.perf_counter() - t2
                 masks = out["masks"].squeeze(1).cpu().numpy().astype(bool)
                 scores = out["scores"].float().cpu().numpy().round(3).tolist()
-                results.append({"image": path, "prompt": prompt, "n": len(scores), "scores": scores,
-                                "encode_s": round(enc_s, 3), "prompt_s": round(dt, 3)})
+                results.append(
+                    {
+                        "image": path,
+                        "prompt": prompt,
+                        "n": len(scores),
+                        "scores": scores,
+                        "encode_s": round(enc_s, 3),
+                        "prompt_s": round(dt, 3),
+                    }
+                )
                 log.info("%s | %-20s n=%d scores=%s %.3fs", Path(path).name, prompt, len(scores), scores, dt)
                 if len(masks):
                     vis = overlay(np.array(image), masks)
