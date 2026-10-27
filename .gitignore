@@ -1,0 +1,25 @@
+# data and weights never get committed
+data/
+models/
+checkpoints/
+clips/
+third_party/
+debug/
+.cache/
+*.gguf
+*.pt
+*.safetensors
+
+# secrets
+.env
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# self-eval on third-party POC clips stays local
+eval/poc_*

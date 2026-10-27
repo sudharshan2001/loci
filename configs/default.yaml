@@ -1,0 +1,47 @@
+# Loci default configuration. Paths are relative to the repo root.
+
+paths:
+  data: data
+  sessions: data/sessions
+  memory_db: data/memory.sqlite
+  cache: .cache/loci
+  checkpoints: checkpoints
+
+cloud:
+  enabled: false   # Phase 1: no Meta Model API calls at all
+
+models:
+  sam3:
+    checkpoint: checkpoints/sam3.1/sam3.1_multiplex.pt
+  mapanything:
+    checkpoint: checkpoints/map-anything-apache
+  glimmer:
+    quant: UD-Q3_K_XL
+    model: checkpoints/glimmer/Muse-Glimmer-30B-UD-Q3_K_XL.gguf
+    mmproj: checkpoints/glimmer/mmproj-Muse-Glimmer-30B-BF16.gguf
+    server_bin: ../llama.cpp/build/bin/llama-server
+    port: 8001
+    ctx: 16384
+    n_gpu_layers: 99
+  whisper:
+    size: small
+
+providers:
+  namer: glimmer
+  vision_checker: glimmer
+  transcriber: faster_whisper
+
+extract:
+  max_keyframes: 80
+  candidate_fps: 4
+  min_sharpness_quantile: 0.3
+
+scenes:
+  home:
+    redact_prompts: [face, computer screen, phone screen, document with text]
+    vocab: [gas stove, burner flame, pan, desk, computer monitor, keyboard, potted plant,
+            keys, wallet, charger, door, window]
+  street:
+    redact_prompts: [face, license plate]
+    vocab: [shop sign, signboard, shop entrance, bus stop, ATM, tree]
+    exclude_from_pointcloud: [person, car, motorcycle, auto rickshaw, bus]
