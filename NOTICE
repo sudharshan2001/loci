@@ -14,8 +14,3 @@ Shipped pipeline:
 - Muse Glimmer 30B GGUF (unsloth/Muse-Glimmer-30B-GGUF) - agent, local vision, object naming.
   Apache License 2.0. Served with llama.cpp (MIT).
 - faster-whisper (MIT) - offline speech fallback only.
-
-Benchmarking only (never part of the shipped pipeline):
-- VGGT-Omega (facebook/VGGT-Omega) - FAIR noncommercial licence. Geometry comparison.
-- Depth Anything 3 (ByteDance-Seed) - geometry comparison.
-- MoGe-3 (Microsoft) - depth comparison.

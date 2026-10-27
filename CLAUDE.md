@@ -97,8 +97,8 @@ plus small items placed on purpose):
 - numpy is overridden to `>=2` (sam3 pins `<2`; mapanything's rerun-sdk needs `>=2`). SAM 3 works with it.
 - llama.cpp built with CUDA at `../llama.cpp/build/bin/llama-server` (outside the repo).
 - `checkpoints/` (gitignored): `sam3.1/`, `map-anything-apache/`, `glimmer/` (UD-Q3_K_XL, UD-Q4_K_XL,
-  mmproj Q8_0 + BF16), plus benchmark-only `DA3NESTED-GIANT-LARGE-1.1`, `moge-3-vit{l,g}`, `vggt_omega_1b_512.pt`
-  (symlinks to the developer's existing weights).
+  mmproj Q8_0 + BF16). Also linked but unused: `DA3NESTED-GIANT-LARGE-1.1`, `moge-3-vit{l,g}`,
+  `vggt_omega_1b_512.pt`.
 - Measure free VRAM before each stage and log the peak after it.
 
 ## 5. Models
@@ -111,7 +111,7 @@ plus small items placed on purpose):
 | Speech (Phase 1) | faster-whisper | Local subprocess | MIT. Offline fallback after C1. |
 | Cloud second opinion (Phase 2) | Muse Spark 1.3 | Meta Model API | Redacted crops only. Everything works with `--no-cloud`. |
 | Speech (Phase 2) | Muse Voice Transcribe 1.0 | Meta Model API | Default transcriber from C1. |
-| Benchmark only | VGGT-Omega, Depth Anything 3, MoGe-3 | Local GPU | Yardsticks for M6 ("we tested three geometry models and chose MapAnything because…"). Never in the shipped pipeline. Not YOLO (AGPL). |
+| Not used | VGGT-Omega, Depth Anything 3, MoGe-3, YOLO | – | **Developer decision (Oct 27): MapAnything is the only geometry model.** No comparison runs. YOLO excluded (AGPL). |
 
 Meta Model API docs: https://dev.meta.ai/docs/overview, /quickstart, /models, /pricing-rate-limits.
 All Meta API calls go through `loci/cloud/meta_api.py` (retries, timeouts, disk cache, key never logged).
@@ -193,7 +193,7 @@ Dark, readable at 1080p and in a 9:16 crop, no debug clutter.
 | --- | --- |
 | Mon Oct 27 | M0 repo/env, M1 extract, downloads |
 | Tue Oct 28 | M2 smoke tests + `docs/benchmarks.md`, M3 redaction, M4 naming |
-| Wed Oct 29 | M5 tracking, M6 geometry (+ DA3/VGGT-Omega comparison), start M7 |
+| Wed Oct 29 | M5 tracking, M6 geometry (MapAnything only), start M7 |
 | Thu Oct 30 | M7 lift/associate/relations/attributes, M8 `loci build`, M9 agent + verifier → **Checkpoint B** |
 | Fri Oct 31 | C1 Meta cloud models, M10 (if evening capture exists) |
 | Sat Nov 1 | M11 speech, leaving check, verify_open_weights, M12 API + viewer |

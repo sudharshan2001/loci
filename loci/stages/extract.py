@@ -20,11 +20,11 @@ log = logging.getLogger(__name__)
 
 @dataclass
 class Keyframe:
-    index: int          # keyframe index within the session
-    frame: int          # source video frame number
-    t: float            # timestamp in seconds
-    sharpness: float    # variance of Laplacian on a 640px-wide grey copy
-    file: str           # file name inside keyframes/ (and raw_tmp/)
+    index: int  # keyframe index within the session
+    frame: int  # source video frame number
+    t: float  # timestamp in seconds
+    sharpness: float  # variance of Laplacian on a 640px-wide grey copy
+    file: str  # file name inside keyframes/ (and raw_tmp/)
 
 
 def sharpness(img: np.ndarray, width: int = 640) -> float:
@@ -35,8 +35,9 @@ def sharpness(img: np.ndarray, width: int = 640) -> float:
     return float(cv2.Laplacian(grey, cv2.CV_64F).var())
 
 
-def select_keyframes(times: np.ndarray, scores: np.ndarray, max_keyframes: int,
-                     min_quantile: float) -> list[int]:
+def select_keyframes(
+    times: np.ndarray, scores: np.ndarray, max_keyframes: int, min_quantile: float
+) -> list[int]:
     """Pick at most one candidate per equal time bin: the sharpest, if above the blur floor.
 
     Returns indices into `times`, in time order. Bins whose best candidate is blurry stay empty
@@ -75,8 +76,9 @@ def extract_audio(video: Path, out: Path) -> bool:
     return True
 
 
-def run(video: Path, session_dir: Path, max_keyframes: int, candidate_fps: float,
-        min_quantile: float) -> list[Keyframe]:
+def run(
+    video: Path, session_dir: Path, max_keyframes: int, candidate_fps: float, min_quantile: float
+) -> list[Keyframe]:
     session_dir.mkdir(parents=True, exist_ok=True)
     raw_dir = session_dir / "raw_tmp"
     raw_dir.mkdir(exist_ok=True)
@@ -109,19 +111,29 @@ def run(video: Path, session_dir: Path, max_keyframes: int, candidate_fps: float
             continue
         name = f"{k:04d}.jpg"
         cv2.imwrite(str(raw_dir / name), img, [cv2.IMWRITE_JPEG_QUALITY, 95])
-        keyframes.append(Keyframe(k, int(frames[ci]), round(float(times[ci]), 3),
-                                  round(float(scores[ci]), 1), name))
+        keyframes.append(
+            Keyframe(k, int(frames[ci]), round(float(times[ci]), 3), round(float(scores[ci]), 1), name)
+        )
     cap.release()
 
     has_audio = extract_audio(video, session_dir / "audio.wav")
     meta = {
-        "video": str(video), "fps": fps, "n_frames": n_frames, "duration_s": round(n_frames / fps, 2),
-        "n_candidates": len(frames), "has_audio": has_audio,
+        "video": str(video),
+        "fps": fps,
+        "n_frames": n_frames,
+        "duration_s": round(n_frames / fps, 2),
+        "n_candidates": len(frames),
+        "has_audio": has_audio,
         "keyframes": [asdict(k) for k in keyframes],
     }
     (session_dir / "keyframes.json").write_text(json.dumps(meta, indent=2))
     gaps = np.diff([k.t for k in keyframes]) if len(keyframes) > 1 else np.array([0.0])
-    log.info("%s: %d/%d candidates kept, max gap %.2fs, median sharpness %.0f",
-             video.name, len(keyframes), len(frames), gaps.max(),
-             np.median([k.sharpness for k in keyframes]) if keyframes else 0)
+    log.info(
+        "%s: %d/%d candidates kept, max gap %.2fs, median sharpness %.0f",
+        video.name,
+        len(keyframes),
+        len(frames),
+        gaps.max(),
+        np.median([k.sharpness for k in keyframes]) if keyframes else 0,
+    )
     return keyframes
