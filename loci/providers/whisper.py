@@ -34,8 +34,6 @@ class FasterWhisperTranscriber:
             pcm = pcm.mean(1)
         samples = pcm.astype(np.float32) / 32768.0
         segments, info = self.model.transcribe(samples, beam_size=5, vad_filter=True)
-        out = [
-            Utterance(round(s.start, 2), round(s.end, 2), s.text.strip()) for s in segments if s.text.strip()
-        ]
+        out = [Utterance(round(s.start, 2), round(s.end, 2), s.text.strip()) for s in segments if s.text.strip()]
         log.info("transcribed %.1fs (%s): %d utterances", info.duration, info.language, len(out))
         return out

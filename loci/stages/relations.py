@@ -103,9 +103,7 @@ def home_relations(
         c = np.asarray(o["centroid"])
         o["dist_to_start_m"] = round(float(np.linalg.norm(c - start)), 2)
         if doors:
-            o["dist_to_door_m"] = round(
-                min(float(np.linalg.norm(c - np.asarray(d["centroid"]))) for d in doors), 2
-            )
+            o["dist_to_door_m"] = round(min(float(np.linalg.norm(c - np.asarray(d["centroid"]))) for d in doors), 2)
         if o["label"] in ANCHORS:
             continue
         cam = poses[row_of[obs_by_id[o["best_obs"]]["keyframe"]]]
@@ -113,17 +111,11 @@ def home_relations(
             ac = np.asarray(a["centroid"])
             d = float(np.linalg.norm(c - ac))
             if is_on(o, a, up):
-                rels.append(
-                    {"subject": o["object_id"], "relation": "on", "object": a["object_id"], "dist_m": d}
-                )
+                rels.append({"subject": o["object_id"], "relation": "on", "object": a["object_id"], "dist_m": d})
             elif is_inside(o, a) and a["label"] in {"drawer", "shelf", "cabinet", "wardrobe", "bookshelf"}:
-                rels.append(
-                    {"subject": o["object_id"], "relation": "inside", "object": a["object_id"], "dist_m": d}
-                )
+                rels.append({"subject": o["object_id"], "relation": "inside", "object": a["object_id"], "dist_m": d})
             elif d <= near_m:
-                rels.append(
-                    {"subject": o["object_id"], "relation": "near", "object": a["object_id"], "dist_m": d}
-                )
+                rels.append({"subject": o["object_id"], "relation": "near", "object": a["object_id"], "dist_m": d})
                 rels.append(
                     {
                         "subject": o["object_id"],
@@ -196,9 +188,7 @@ def run(session: Session) -> dict[str, Any]:
         times = [k["t"] for k in session.keyframes()]
         walk_metrics(objects, g["poses"], times, up)
         for o in objects:
-            o["location_text"] = (
-                f"on your {o['side']}, about {o['distance_along_walk_m']:.0f} m into the walk"
-            )
+            o["location_text"] = f"on your {o['side']}, about {o['distance_along_walk_m']:.0f} m into the walk"
     else:
         rels = home_relations(objects, obs_by_id, g["poses"], row_of, up)
         for o in objects:

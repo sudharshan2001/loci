@@ -40,18 +40,14 @@ def main() -> None:
     frames = sorted(Path(args.frames).glob("*.jpg"))
     torch.cuda.reset_peak_memory_stats()
     t1 = time.perf_counter()
-    session_id = predictor.handle_request({"type": "start_session", "resource_path": args.frames})[
-        "session_id"
-    ]
+    session_id = predictor.handle_request({"type": "start_session", "resource_path": args.frames})["session_id"]
     start_s = time.perf_counter() - t1
 
     rows = []
     for prompt in args.prompts:
         predictor.handle_request({"type": "reset_session", "session_id": session_id})
         t2 = time.perf_counter()
-        predictor.handle_request(
-            {"type": "add_prompt", "session_id": session_id, "frame_index": 0, "text": prompt}
-        )
+        predictor.handle_request({"type": "add_prompt", "session_id": session_id, "frame_index": 0, "text": prompt})
         per_frame = {}
         for resp in predictor.handle_stream_request({"type": "propagate_in_video", "session_id": session_id}):
             per_frame[resp["frame_index"]] = resp["outputs"]

@@ -55,10 +55,7 @@ def run(session: Session, min_points: int = 20, conf_percentile: float = 10) -> 
         cam = g["poses"][r][:3, 3]
         obs.append(
             {
-                **{
-                    k: inst[k]
-                    for k in ("obs_id", "keyframe", "t", "label", "aliases", "score", "bbox", "area")
-                },
+                **{k: inst[k] for k in ("obs_id", "keyframe", "t", "label", "aliases", "score", "bbox", "area")},
                 "image_size": inst["image_size"],
                 "centroid": c.round(4).tolist(),
                 "box_min": lo.round(4).tolist(),
@@ -71,7 +68,5 @@ def run(session: Session, min_points: int = 20, conf_percentile: float = 10) -> 
             }
         )
     session.write(session.observations, obs)
-    log.info(
-        "%s: %d observations lifted, %d dropped (too few valid depth points)", session.id, len(obs), dropped
-    )
+    log.info("%s: %d observations lifted, %d dropped (too few valid depth points)", session.id, len(obs), dropped)
     return obs

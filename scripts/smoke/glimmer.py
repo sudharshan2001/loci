@@ -152,9 +152,7 @@ def main() -> None:
         rows = []
         q = "In one sentence: why does a robot need metric depth to pick up a cup?"
         for strength in ["low", "high"]:
-            rows.append(
-                report(f"text_{strength}", *chat(url, [system(strength), {"role": "user", "content": q}]))
-            )
+            rows.append(report(f"text_{strength}", *chat(url, [system(strength), {"role": "user", "content": q}])))
         for strength in ["low", "high"]:
             rows.append(report(f"image_{strength}", *chat(url, [system(strength), image_msg])))
         rows.append(

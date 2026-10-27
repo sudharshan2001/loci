@@ -126,9 +126,7 @@ def overlay_video(session: Session, out_path, fps: float = 2.0) -> None:
             cv2.putText(img, txt, (x0 + 2, y0 + 16), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 3)
             cv2.putText(img, txt, (x0 + 2, y0 + 16), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
         if writer is None:
-            writer = cv2.VideoWriter(
-                str(out_path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (img.shape[1], img.shape[0])
-            )
+            writer = cv2.VideoWriter(str(out_path), cv2.VideoWriter_fourcc(*"mp4v"), fps, (img.shape[1], img.shape[0]))
         writer.write(img)
     if writer is not None:
         writer.release()

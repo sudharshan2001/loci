@@ -186,10 +186,7 @@ def run(session: Session, db_path: Path) -> dict:
         )
         con.executemany(
             "INSERT INTO utterances VALUES (?,?,?,?,?,?)",
-            [
-                (sid, i, u["start_s"], u["end_s"], u["text"], u.get("speaker"))
-                for i, u in enumerate(utt["utterances"])
-            ],
+            [(sid, i, u["start_s"], u["end_s"], u["text"], u.get("speaker")) for i, u in enumerate(utt["utterances"])],
         )
         con.executemany(
             "INSERT INTO utterance_links VALUES (?,?,?,?)",

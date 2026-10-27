@@ -96,9 +96,7 @@ def name(session: str) -> None:
 
 
 @app.command()
-def track(
-    session: str, debug_video: bool = typer.Option(True, help="write debug/<session>_tracks.mp4")
-) -> None:
+def track(session: str, debug_video: bool = typer.Option(True, help="write debug/<session>_tracks.mp4")) -> None:
     """Stage 4: SAM 3.1 finds every vocabulary phrase in every keyframe."""
     from loci.config import repo_path
     from loci.stages import track as stage
@@ -216,8 +214,7 @@ def _print_objects(session_id: str) -> None:
         extra = r["text"] or (f"{r['state']} @ {r['state_seen_at']:.1f}s" if r["state"] else "")
         pos = f"[{r['cx']:6.2f} {r['cy']:6.2f} {r['cz']:6.2f}]"
         typer.echo(
-            f"{r['object_id']:24} {r['n_obs']:3d} {r['confidence']:5.2f}  {pos:22} "
-            f"{r['location_text'] or ''} {extra}"
+            f"{r['object_id']:24} {r['n_obs']:3d} {r['confidence']:5.2f}  {pos:22} {r['location_text'] or ''} {extra}"
         )
     con.close()
 
@@ -276,6 +273,31 @@ def build(
             log.info("stage %s: cached", stage)
             continue
         run([stage, sid])
+
+
+@app.command()
+def ask(
+    question: str,
+    no_cloud: bool = typer.Option(True, "--no-cloud/--cloud", help="Phase 1: local only"),
+    show_trace: bool = typer.Option(False, "--trace"),
+) -> None:
+    """Ask the memory a question (searches every session)."""
+    import json
+
+    from loci.agent.agent import ask as run_ask
+    from loci.agent.tools import Memory
+    from loci.config import repo_path
+    from loci.llm import glimmer_server
+    from loci.stages.store import connect
+
+    con = connect(repo_path(_cfg()["paths"]["memory_db"]))
+    with glimmer_server(repo_path("debug") / "glimmer_ask.log") as url:
+        ans = run_ask(question, Memory(con), url)
+    trace = ans.pop("trace", [])
+    typer.echo(f"\n{ans['answer']}\n")
+    typer.echo(json.dumps({k: v for k, v in ans.items() if k != "answer"}, indent=2, ensure_ascii=False))
+    if show_trace:
+        typer.echo(json.dumps(trace, indent=2, ensure_ascii=False)[:8000])
 
 
 @app.command()

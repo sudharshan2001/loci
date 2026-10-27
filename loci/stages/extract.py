@@ -35,9 +35,7 @@ def sharpness(img: np.ndarray, width: int = 640) -> float:
     return float(cv2.Laplacian(grey, cv2.CV_64F).var())
 
 
-def select_keyframes(
-    times: np.ndarray, scores: np.ndarray, max_keyframes: int, min_quantile: float
-) -> list[int]:
+def select_keyframes(times: np.ndarray, scores: np.ndarray, max_keyframes: int, min_quantile: float) -> list[int]:
     """Pick at most one candidate per equal time bin: the sharpest, if above the blur floor.
 
     Returns indices into `times`, in time order. Bins whose best candidate is blurry stay empty
@@ -111,9 +109,7 @@ def run(
             continue
         name = f"{k:04d}.jpg"
         cv2.imwrite(str(raw_dir / name), img, [cv2.IMWRITE_JPEG_QUALITY, 95])
-        keyframes.append(
-            Keyframe(k, int(frames[ci]), round(float(times[ci]), 3), round(float(scores[ci]), 1), name)
-        )
+        keyframes.append(Keyframe(k, int(frames[ci]), round(float(times[ci]), 3), round(float(scores[ci]), 1), name))
     cap.release()
 
     has_audio = extract_audio(video, session_dir / "audio.wav")

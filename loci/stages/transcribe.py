@@ -36,9 +36,7 @@ def run(session: Session, transcriber: Transcriber) -> dict:
     utts = [asdict(u) for u in transcriber.transcribe(session.audio)]
     obj_of = {oid: o["object_id"] for o in session.read(session.objects) for oid in o["obs_ids"]}
     obs = [
-        {**ob, "object_id": obj_of[ob["obs_id"]]}
-        for ob in session.read(session.observations)
-        if ob["obs_id"] in obj_of
+        {**ob, "object_id": obj_of[ob["obs_id"]]} for ob in session.read(session.observations) if ob["obs_id"] in obj_of
     ]
     result = {"utterances": utts, "links": link(utts, obs)}
     session.write(session.utterances, result)

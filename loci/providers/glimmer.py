@@ -30,9 +30,7 @@ class GlimmerNamer:
 
     def name_objects(self, images: list[Path], scene: str) -> list[str]:
         content: list[dict[str, Any]] = [image_part(p) for p in images]
-        content.append(
-            {"type": "text", "text": NAME_PROMPT.format(scene="home" if scene == "home" else "street")}
-        )
+        content.append({"type": "text", "text": NAME_PROMPT.format(scene="home" if scene == "home" else "street")})
         out = chat_json(self.base_url, content, strength="medium")
         if not isinstance(out, list):
             raise ValueError(f"expected a JSON array, got {type(out).__name__}")
@@ -68,9 +66,7 @@ class GlimmerVisionChecker:
         out = chat_json(self.base_url, content, strength=strength)
         return out if isinstance(out, dict) else {"answer": out, "confidence": 0.0}
 
-    def check(
-        self, image: Path, question: str, tight: Path | None = None, wide: Path | None = None
-    ) -> VisionAnswer:
+    def check(self, image: Path, question: str, tight: Path | None = None, wide: Path | None = None) -> VisionAnswer:
         ans = self._ask([image], question, "low")
         attempts = ["glimmer:low"]
         if float(ans.get("confidence", 0)) < self.min_confidence:

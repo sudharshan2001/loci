@@ -41,9 +41,7 @@ def main() -> None:
         audio = pcm.astype(np.float32) / 32768.0
         t1 = time.perf_counter()
         segments, info = model.transcribe(audio, beam_size=5, vad_filter=True)
-        segs = [
-            {"start": round(s.start, 2), "end": round(s.end, 2), "text": s.text.strip()} for s in segments
-        ]
+        segs = [{"start": round(s.start, 2), "end": round(s.end, 2), "text": s.text.strip()} for s in segments]
         dt = time.perf_counter() - t1
         rows.append(
             {

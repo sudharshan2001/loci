@@ -61,9 +61,7 @@ def spread(n: int, k: int) -> list[int]:
     return sorted({int(i) for i in np.linspace(0, n - 1, min(k, n)).round()})
 
 
-def run(
-    session: Session, namer: Namer, default_vocab: list[str], n_images: int = 8, area_every: int = 5
-) -> dict:
+def run(session: Session, namer: Namer, default_vocab: list[str], n_images: int = 8, area_every: int = 5) -> dict:
     kfs = session.keyframes()
     files = [session.keyframes_dir / k["file"] for k in kfs]
     scene = session.scene()
@@ -82,7 +80,5 @@ def run(
         "area_samples": {str(i): a for i, a in labelled.items()},
     }
     session.write(session.vocab, result)
-    log.info(
-        "%s: %d phrases (%d from Glimmer), areas %s", session.id, len(vocab), len(named), sorted(set(areas))
-    )
+    log.info("%s: %d phrases (%d from Glimmer), areas %s", session.id, len(vocab), len(named), sorted(set(areas)))
     return result

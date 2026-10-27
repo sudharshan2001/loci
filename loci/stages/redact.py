@@ -33,9 +33,7 @@ def blur_regions(img: np.ndarray, mask: np.ndarray, strength: float = 0.04, grow
     coarse = cv2.resize(small, (img.shape[1], img.shape[0]), interpolation=cv2.INTER_LINEAR)
     blurred = cv2.GaussianBlur(coarse, (0, 0), sigma)
     r = max(1, round(grow * side))
-    grown = cv2.dilate(
-        mask.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r + 1, 2 * r + 1))
-    )
+    grown = cv2.dilate(mask.astype(np.uint8), cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (2 * r + 1, 2 * r + 1)))
     alpha = cv2.GaussianBlur(grown.astype(np.float32), (0, 0), r / 2 + 1)
     alpha = np.maximum(alpha, grown)[..., None]  # fully blurred inside the grown mask, soft only outside it
     return (alpha * blurred + (1 - alpha) * img).astype(img.dtype)
@@ -78,12 +76,8 @@ def run(session: Session, prompts: dict[str, float], checkpoint: str, keep_raw: 
                     ledger[prompt]["instances"] += len(masks)
                     ledger[prompt]["frames"] += 1
                 counts[prompt] = int(len(masks))
-        cv2.imwrite(
-            str(session.keyframes_dir / path.name), blur_regions(bgr, union), [cv2.IMWRITE_JPEG_QUALITY, 92]
-        )
-        per_frame.append(
-            {"file": path.name, "counts": counts, "blurred_fraction": round(float(union.mean()), 4)}
-        )
+        cv2.imwrite(str(session.keyframes_dir / path.name), blur_regions(bgr, union), [cv2.IMWRITE_JPEG_QUALITY, 92])
+        per_frame.append({"file": path.name, "counts": counts, "blurred_fraction": round(float(union.mean()), 4)})
 
     seconds = time.perf_counter() - t0
     result = {

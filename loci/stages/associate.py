@@ -57,15 +57,10 @@ class _Obj:
             return None
         oc = np.array(ob["centroid"])
         d = float(np.linalg.norm(oc - self.centroid))
-        size = float(
-            np.linalg.norm(self.half) + np.linalg.norm((np.array(ob["box_max"]) - ob["box_min"]) / 2)
-        )
+        size = float(np.linalg.norm(self.half) + np.linalg.norm((np.array(ob["box_max"]) - ob["box_min"]) / 2))
         if d <= max(min_dist, 0.6 * size):
             return d
-        if (
-            box_iou(self.centroid - self.half, self.centroid + self.half, ob["box_min"], ob["box_max"])
-            >= iou_thresh
-        ):
+        if box_iou(self.centroid - self.half, self.centroid + self.half, ob["box_min"], ob["box_max"]) >= iou_thresh:
             return d
         return None
 
@@ -77,9 +72,7 @@ class _Obj:
         self._update()
 
 
-def associate(
-    observations: list[dict], min_dist: float = 0.25, iou_thresh: float = 0.15
-) -> list[dict[str, Any]]:
+def associate(observations: list[dict], min_dist: float = 0.25, iou_thresh: float = 0.15) -> list[dict[str, Any]]:
     objs: list[_Obj] = []
     for ob in sorted(observations, key=lambda o: -o["score"]):
         best, best_d = None, None
