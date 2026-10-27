@@ -80,9 +80,26 @@ def save_crops(session: Session, ob: dict) -> dict[str, Path]:
     return paths
 
 
-def run(session: Session, checker: VisionChecker, per_object: int = 2) -> list[dict]:
+def pending(session: Session, per_object: int = 2) -> int:
+    """How many vision checks are not yet cached (0 means no Glimmer needed)."""
+    cache_path = session.root / "attr_cache.json"
+    cache = session.read(cache_path) if cache_path.exists() else {}
+    obs = {o["obs_id"]: o for o in session.read(session.observations)}
+    n = 0
+    for o in session.read(session.objects):
+        q = question_for(o["label"])
+        if q:
+            cands = sorted((obs[i] for i in o["obs_ids"]), key=lambda m: -m["quality"])[:per_object]
+            n += sum(f"{c['obs_id']}|{q[0]}" not in cache for c in cands)
+    return n
+
+
+def run(session: Session, checker: VisionChecker | None, per_object: int = 2) -> list[dict]:
+    """Answers are cached per (observation, kind), so re-running after association changes is free."""
     objects = session.read(session.objects)
     obs = {o["obs_id"]: o for o in session.read(session.observations)}
+    cache_path = session.root / "attr_cache.json"
+    cache: dict[str, dict] = session.read(cache_path) if cache_path.exists() else {}
     results = []
     for o in objects:
         q = question_for(o["label"])
@@ -92,24 +109,30 @@ def run(session: Session, checker: VisionChecker, per_object: int = 2) -> list[d
         cands = sorted((obs[i] for i in o["obs_ids"]), key=lambda m: -m["quality"])[:per_object]
         best: dict[str, Any] | None = None
         for ob in cands:
-            c = save_crops(session, ob)
-            ans = checker.check(c["ctx"], question, tight=c["tight"], wide=c["wide"])
-            if kind == "sign" and not ans.answer.get("readable", True):
-                ans.confidence *= 0.3
-            row = {
-                "object_id": o["object_id"],
-                "kind": kind,
-                "obs_id": ob["obs_id"],
-                "seen_at": ob["t"],
-                "answer": ans.answer,
-                "confidence": round(ans.confidence, 3),
-                "attempts": ans.attempts,
-                "used_cloud": ans.used_cloud,
-                "crop": str(c["ctx"].relative_to(session.root)),
-            }
+            key = f"{ob['obs_id']}|{kind}"
+            if key not in cache:
+                if checker is None:  # cached-only run
+                    continue
+                c = save_crops(session, ob)
+                ans = checker.check(c["ctx"], question, tight=c["tight"], wide=c["wide"])
+                if kind == "sign" and not ans.answer.get("readable", True):
+                    ans.confidence *= 0.3
+                cache[key] = {
+                    "kind": kind,
+                    "obs_id": ob["obs_id"],
+                    "seen_at": ob["t"],
+                    "answer": ans.answer,
+                    "confidence": round(ans.confidence, 3),
+                    "attempts": ans.attempts,
+                    "used_cloud": ans.used_cloud,
+                    "crop": str(c["ctx"].relative_to(session.root)),
+                }
+                session.write(cache_path, cache)
+            row = {"object_id": o["object_id"], **cache[key]}
             if best is None or row["confidence"] > best["confidence"]:
                 best = row
-        assert best is not None
+        if best is None:
+            continue
         if kind == "sign":
             o["text"] = best["answer"].get("text")
             o["text_english"] = best["answer"].get("text_english")

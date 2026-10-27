@@ -46,3 +46,14 @@ def test_ids_are_stable_and_ordered_by_first_seen() -> None:
     objs = associate(obs)
     assert [o["object_id"] for o in objs] == ["keys_1", "keys_2"]
     assert objs[0]["obs_ids"] == ["y"]
+
+
+def test_overlapping_partial_views_merge_and_weak_singletons_drop() -> None:
+    # two partial views of one bed, far enough apart to start separate objects, but overlapping boxes
+    obs = [
+        _ob("a", "bed", [0, 0, 0], half=0.8, t=1),
+        _ob("b", "bed", [1.2, 0, 0], half=0.8, t=2),
+        _ob("c", "vase", [5, 0, 0], score=0.4, t=3),  # single weak sighting
+    ]
+    objs = associate(obs)
+    assert [o["label"] for o in objs] == ["bed"] and objs[0]["n_obs"] == 2

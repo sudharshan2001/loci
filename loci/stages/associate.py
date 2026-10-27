@@ -77,7 +77,30 @@ class _Obj:
         self._update()
 
 
-def associate(observations: list[dict], min_dist: float = 0.25, iou_thresh: float = 0.15) -> list[dict[str, Any]]:
+def merge_overlapping(objs: list[_Obj]) -> list[_Obj]:
+    """Second pass: merge objects with compatible labels whose union boxes intersect.
+
+    Partial views of one big thing (a bed, a chair at the frame edge) start separate objects in the greedy pass.
+    """
+    merged = True
+    while merged:
+        merged = False
+        for i, a in enumerate(objs):
+            for b in objs[i + 1 :]:
+                if labels_compatible(a.as_match(), b.as_match()) and box_iou(a.lo, a.hi, b.lo, b.hi) > 0.05:
+                    for m in b.members:
+                        a.add(m)
+                    objs.remove(b)
+                    merged = True
+                    break
+            if merged:
+                break
+    return objs
+
+
+def associate(
+    observations: list[dict], min_dist: float = 0.25, iou_thresh: float = 0.15, single_min_score: float = 0.6
+) -> list[dict[str, Any]]:
     objs: list[_Obj] = []
     for ob in sorted(observations, key=lambda o: -o["score"]):
         best, best_d = None, None
@@ -89,6 +112,9 @@ def associate(observations: list[dict], min_dist: float = 0.25, iou_thresh: floa
             objs.append(_Obj(ob))
         else:
             best.add(ob)
+    objs = merge_overlapping(objs)
+    # a thing seen in one frame only needs a confident detection to count
+    objs = [o for o in objs if len(o.members) > 1 or o.members[0]["score"] >= single_min_score]
 
     out = []
     counters: dict[str, int] = {}

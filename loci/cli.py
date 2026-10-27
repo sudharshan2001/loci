@@ -170,9 +170,11 @@ def attributes(session: str) -> None:
     from loci.stages import attributes as stage
 
     s = _session(session)
-    with glimmer_server(s.root / "glimmer.log") as url:
-        res = stage.run(s, get_vision_checker(url))
-    typer.echo(f"{s.id}: {len(res)} attributes")
+    if stage.pending(s) == 0:
+        res = stage.run(s, None)  # everything cached: no Glimmer start
+    else:
+        with glimmer_server(s.root / "glimmer.log") as url:
+            res = stage.run(s, get_vision_checker(url))
 
 
 @app.command()

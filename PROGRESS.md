@@ -91,3 +91,17 @@ Known issues:
 - Duplicate objects for things seen only at the frame edge (three chairs for one).
 - Screen on/off is unreliable after blurring (blurred screens look dark).
 - Glimmer server start is 1–9 min from the data HDD (see improvement.md). geometry stage 5 min, mostly load.
+
+## M10–M12 early work (Oct 28, ahead of schedule while waiting for footage)
+
+- Association: second merge pass for overlapping same-label objects and a minimum score for single
+  sightings (bedroom sample 49 -> 41 objects, desk 21 -> 18).
+- Attributes are cached per observation, so re-running association no longer needs Glimmer.
+- API (`loci serve`): /ask, /ask_audio (whisper on CPU so it never competes with Glimmer for VRAM),
+  /sessions, /scene, /objects, /evidence (redacted frame with mask outline), /privacy, /alerts.
+- Viewer: point cloud, camera path, "you are here", highlight + fly-to + dashed path on answer, evidence
+  frame, local/verified/confidence badges, robot goal JSON, privacy ledger, voice questions, street shop
+  markers. Checked with headless Chromium at 1920x1080: "Where's my mouse?" answered in 14 s, verified.
+- Leaving check (`loci check`, last stage of `loci build`): Glimmer picks what to flag from states,
+  valuables and spoken notes; every alert passes the verifier. Not yet run on footage with a stateful object.
+- `scripts/eval.py`: accuracy, refusals, first-attempt verification, median latency -> eval/results.md.

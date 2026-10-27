@@ -119,7 +119,7 @@ async function loadSession(sid) {
   layers.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(path),
                             new THREE.LineBasicMaterial({ color: 0x5b6b80, transparent: true, opacity: 0.8 })));
   const here = cv(current.you_are_here.slice(0, 3).map((r) => r[3]));
-  const me = new THREE.Mesh(new THREE.SphereGeometry(current.scene === "street" ? 0.35 : 0.06, 20, 20),
+  const me = new THREE.Mesh(new THREE.SphereGeometry(current.scene === "street" ? 0.25 : 0.025, 20, 20),
                             new THREE.MeshBasicMaterial({ color: 0x4fd18b }));
   me.position.copy(here);
   layers.add(me);
@@ -137,7 +137,11 @@ async function loadSession(sid) {
   }
 
   const c = geo.boundingSphere.center, r = geo.boundingSphere.radius;
-  camera.position.copy(here.clone().add(new THREE.Vector3(0, r * 0.5, r * 0.8)));
+  // frame the whole scene from behind and above where the walk started
+  const start = cv(current.camera_path[0]);
+  const back = start.clone().sub(c).setY(0).normalize();
+  if (back.lengthSq() < 1e-6) back.set(0, 0, 1);
+  camera.position.copy(c.clone().add(back.multiplyScalar(r * 1.1)).add(new THREE.Vector3(0, r * 0.7, 0)));
   controls.target.copy(c);
   camera.near = r / 500; camera.far = r * 20; camera.updateProjectionMatrix();
   $("legend").textContent = `${current.objects.length} objects · ${geo.attributes.position.count.toLocaleString()} points`;
@@ -190,7 +194,7 @@ function highlight(ans) {
   hit.add(line);
   addTag(target, o.text || o.label, "hit");
   const size = box.getSize(new THREE.Vector3()).length();
-  flyTo(target, Math.max(current.scene === "street" ? 6 : 0.8, size * 2.5));
+  flyTo(target, Math.max(current.scene === "street" ? 6 : 1.2, size * 3));
 }
 
 function showAnswer(ans) {
@@ -268,4 +272,12 @@ $("mic").onclick = async () => {
 
 resize();
 requestAnimationFrame(animate);
-loadSessions().catch((e) => { $("legend").textContent = e.message; });
+// ?session=<id> opens a session, ?q=<question> asks on load (handy for demos and screenshots)
+const params = new URLSearchParams(location.search);
+loadSessions()
+  .then(() => params.get("session") && loadSession(params.get("session")))
+  .then(() => {
+    const q = params.get("q");
+    if (q) { $("q").value = q; $("askform").requestSubmit(); }
+  })
+  .catch((e) => { $("legend").textContent = e.message; });
