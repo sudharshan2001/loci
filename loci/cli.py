@@ -126,6 +126,165 @@ def track(
 
 
 @app.command()
+def geometry(session: str) -> None:
+    """Stage 5: MapAnything poses, metric depth and scene.ply."""
+    from loci.config import repo_path
+    from loci.stages import geometry as stage
+
+    s = _session(session)
+    res = stage.run(s, str(repo_path(_cfg()["models"]["mapanything"]["checkpoint"])))
+    typer.echo(f"{s.id}: {res['n_views']} views, path {res['camera_path_m']} m, {res['ply_points']} points")
+
+
+@app.command()
+def lift(session: str) -> None:
+    """Stage 6: lift detections to 3D (CPU)."""
+    from loci.stages import lift as stage
+
+    s = _session(session)
+    typer.echo(f"{s.id}: {len(stage.run(s))} observations")
+
+
+@app.command()
+def associate(session: str) -> None:
+    """Stage 7: merge observations into objects (CPU)."""
+    from loci.stages import associate as stage
+
+    s = _session(session)
+    typer.echo(f"{s.id}: {len(stage.run(s))} objects")
+
+
+@app.command()
+def relations(session: str) -> None:
+    """Stage 8: spatial relations and location text (CPU)."""
+    from loci.stages import relations as stage
+
+    s = _session(session)
+    res = stage.run(s)
+    typer.echo(f"{s.id}: {len(res['relations'])} relations")
+
+
+@app.command()
+def attributes(session: str) -> None:
+    """Stage 9: Glimmer reads signs and checks object states."""
+    from loci.llm import glimmer_server
+    from loci.providers import get_vision_checker
+    from loci.stages import attributes as stage
+
+    s = _session(session)
+    with glimmer_server(s.root / "glimmer.log") as url:
+        res = stage.run(s, get_vision_checker(url))
+    typer.echo(f"{s.id}: {len(res)} attributes")
+
+
+@app.command()
+def transcribe(session: str) -> None:
+    """Stage 10: transcribe audio and link utterances to objects in view."""
+    from loci.providers import get_transcriber
+    from loci.stages import transcribe as stage
+
+    s = _session(session)
+    res = stage.run(s, get_transcriber())
+    for u in res["utterances"]:
+        typer.echo(f"  {u['start_s']:6.1f}s  {u['text']}")
+
+
+@app.command()
+def store(session: str) -> None:
+    """Stage 11: write the session into data/memory.sqlite and print its object table."""
+    from loci.config import repo_path
+    from loci.stages import store as stage
+
+    s = _session(session)
+    stage.run(s, repo_path(_cfg()["paths"]["memory_db"]))
+    _print_objects(s.id)
+
+
+def _print_objects(session_id: str) -> None:
+    from loci.config import repo_path
+    from loci.stages.store import connect
+
+    con = connect(repo_path(_cfg()["paths"]["memory_db"]))
+    rows = con.execute(
+        "SELECT object_id, label, n_obs, confidence, cx, cy, cz, location_text, text, state, state_seen_at "
+        "FROM objects WHERE session_id=? ORDER BY first_seen",
+        (session_id,),
+    ).fetchall()
+    typer.echo(f"\n{session_id}: {len(rows)} objects")
+    typer.echo(f"{'object':24} {'n':>3} {'conf':>5}  {'position (m)':22} location / text / state")
+    for r in rows:
+        extra = r["text"] or (f"{r['state']} @ {r['state_seen_at']:.1f}s" if r["state"] else "")
+        pos = f"[{r['cx']:6.2f} {r['cy']:6.2f} {r['cz']:6.2f}]"
+        typer.echo(
+            f"{r['object_id']:24} {r['n_obs']:3d} {r['confidence']:5.2f}  {pos:22} "
+            f"{r['location_text'] or ''} {extra}"
+        )
+    con.close()
+
+
+# stage name -> output file (relative to the session folder) that marks it done
+STAGES = [
+    ("redact", "privacy_ledger.json"),
+    ("name", "vocab.json"),
+    ("track", "tracks.json"),
+    ("geometry", "geometry.npz"),
+    ("lift", "observations.json"),
+    ("associate", "objects.json"),
+    ("relations", "relations.json"),
+    ("attributes", "attributes.json"),
+    ("transcribe", "utterances.json"),
+    ("store", None),
+]
+
+
+@app.command()
+def build(
+    video: Path = typer.Argument(..., exists=True, dir_okay=False),
+    scene: Scene = typer.Option(Scene.home, "--scene"),
+    session: str | None = typer.Option(None, help="Session id (default: derived from the video)"),
+    from_stage: str | None = typer.Option(None, "--from", help="re-run this stage and everything after it"),
+) -> None:
+    """Run every stage on a video, each in its own subprocess (VRAM is freed between stages)."""
+    import subprocess
+    import sys
+    import time
+
+    from loci.session import Session
+    from loci.stages.extract import session_id_for
+
+    sid = session or session_id_for(video)
+    s = Session.named(sid)
+    names = [n for n, _ in STAGES]
+    if from_stage and from_stage not in ["extract", *names]:
+        raise typer.BadParameter(f"--from must be one of extract, {', '.join(names)}")
+    rerun = False if from_stage else None
+
+    def run(args: list[str]) -> None:
+        t = time.perf_counter()
+        res = subprocess.run([sys.executable, "-m", "loci", *args])
+        if res.returncode != 0:
+            raise typer.Exit(res.returncode)
+        log.info("stage %s done in %.0fs", args[0], time.perf_counter() - t)
+
+    if from_stage == "extract" or not (s.root / "keyframes").exists() and not s.raw_dir.exists():
+        run(["extract", str(video), "--scene", scene.value, "--session", sid])
+    for stage, marker in STAGES:
+        if from_stage == stage:
+            rerun = True
+        done = marker is not None and (s.root / marker).exists()
+        if done and not rerun:
+            log.info("stage %s: cached", stage)
+            continue
+        run([stage, sid])
+
+
+@app.command()
+def objects(session: str) -> None:
+    """Print a session's object table from the memory."""
+    _print_objects(session)
+
+
+@app.command()
 def version() -> None:
     """Print the Loci version."""
     from loci import __version__
