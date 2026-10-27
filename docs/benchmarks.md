@@ -44,3 +44,25 @@ peak 5.45 GB. For 80 keyframes × 4 home redaction prompts: ~26 s estimated.
 
 - Glimmer quant: **Q3_K_XL with the Q8_0 mmproj, fully on GPU.**
 - Keyframe budget: **80.**
+
+## SAM 3.1 (video, multiplex predictor)
+
+Built via `loci.sam3_compat.build_video_predictor` (`use_fa3=False`, 4-frame grounding/postprocess
+batches, `init_state` kwarg fix). 23 keyframes at 848×478, one text prompt per pass.
+
+| Prompt | Seconds | Tracks |
+| --- | --- | --- |
+| keyboard | 5.5 | 4 |
+| laptop | 4.2 | 2 |
+| computer screen | 4.2 | 3 |
+| face | 4.4 | 1 |
+
+Load 12.9 s, peak VRAM 9.05 GB (the default 16-frame batches run out of memory on 16 GB).
+~0.19 s per frame per prompt. On sparse keyframes some objects drop out mid-sequence (the external keyboard
+is lost by the last frame), so M5 should not rely on video tracking alone.
+
+## faster-whisper (small, float16, CUDA)
+
+Load 5.1 s (cached). 27.6 s Hindi speech in 5.2 s (incl. warm-up), 5.4 s in 0.23 s; language detected
+correctly (hi, 0.81–0.85). Hindi text quality from `small` is rough; English notes expected to be fine.
+Audio is passed as samples read from our 16 kHz `audio.wav` (PyAV 19 breaks faster-whisper's decoder).

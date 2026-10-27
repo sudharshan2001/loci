@@ -53,3 +53,12 @@ Glimmer Q3 (see `docs/benchmarks.md`):
 - Auto-fit (some layers on CPU) drops to 16 tok/s; vision on CPU makes images 27 s.
 - Reasoning strength via system prompt works: high gives 2–3× the reasoning tokens of low.
 - Decision: Q3_K_XL + Q8_0 mmproj fully on GPU. Q4 still to measure (expected slower, does not fit).
+
+SAM 3.1 video and faster-whisper (see `docs/benchmarks.md`):
+- SAM 3.1 video works through `loci/sam3_compat.py`: needs `use_fa3=False`, 4-frame batches instead of the
+  hard-coded 16 (OOM otherwise; 9.05 GB peak now), and a fix for `start_session` passing kwargs that the
+  multiplex `init_state` does not accept. ~0.19 s per frame per prompt; one prompt per pass.
+- Known issue: on sparse keyframes the video tracker drops some objects. Plan for M5: SAM 3.1 image mode per
+  keyframe for detection, video tracks only as an association hint; identity resolved in 3D (M7).
+- faster-whisper small works (5× real time or better); passes WAV samples directly because PyAV 19 breaks
+  its built-in decoder.

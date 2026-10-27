@@ -8,6 +8,9 @@ import logging
 import time
 from pathlib import Path
 
+import numpy as np
+from scipy.io import wavfile
+
 log = logging.getLogger("smoke.whisper")
 
 
@@ -32,8 +35,12 @@ def main() -> None:
 
     rows = []
     for path in args.audio:
+        # audio.wav is 16 kHz mono from extract; pass samples directly (PyAV 19 breaks the built-in decoder)
+        sr, pcm = wavfile.read(path)
+        assert sr == 16000, f"expected 16 kHz, got {sr}"
+        audio = pcm.astype(np.float32) / 32768.0
         t1 = time.perf_counter()
-        segments, info = model.transcribe(path, beam_size=5, vad_filter=True)
+        segments, info = model.transcribe(audio, beam_size=5, vad_filter=True)
         segs = [
             {"start": round(s.start, 2), "end": round(s.end, 2), "text": s.text.strip()} for s in segments
         ]
