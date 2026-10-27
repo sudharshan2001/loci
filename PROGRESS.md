@@ -30,3 +30,19 @@ Works:
 Pending:
 - Acceptance on the developer's own `home.mp4` / `street.mp4`: lit burner and every shop sign must appear
   in at least one keyframe (add frames around them if not).
+
+## M2 – Smoke tests and benchmarks (Oct 27, in progress)
+
+MapAnything (Apache), 518 px long side, bf16, memory-efficient inference (sample clip, 86 keyframes):
+
+| views | seconds | peak VRAM |
+| --- | --- | --- |
+| 20 | 3.3 | 10.98 GB |
+| 40 | 6.6 | 11.55 GB |
+| 60 | 10.5 | 12.13 GB |
+| 80 | 14.7 | 13.03 GB |
+
+- Model load 11.6 s warm (224 s on first run while backbone weights were fetched). Weights 4.96 GB.
+- Median depth and metric scale stable across view counts (1.8 m, ×1.39). Desk sample reconstructs
+  recognisably (desk, laptop, notebook, keyboard, mouse pad, wall corner); camera path plausible.
+- 80 keyframes per session fits in 16 GB with ~3 GB headroom.
