@@ -35,7 +35,7 @@ providers:
 
 extract:
   max_keyframes: 80
-  candidate_fps: 4
+  candidate_fps: 8  # more candidates so fast pans can get more keyframes
   min_sharpness_quantile: 0.3
 
 scenes:

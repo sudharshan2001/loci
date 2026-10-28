@@ -35,24 +35,55 @@ def sharpness(img: np.ndarray, width: int = 640) -> float:
     return float(cv2.Laplacian(grey, cv2.CV_64F).var())
 
 
-def select_keyframes(times: np.ndarray, scores: np.ndarray, max_keyframes: int, min_quantile: float) -> list[int]:
-    """Pick at most one candidate per equal time bin: the sharpest, if above the blur floor.
+def image_shift(a: np.ndarray, b: np.ndarray, width: int = 160) -> float:
+    """How far the view moved between two frames, as a fraction of the image width (phase correlation)."""
 
-    Returns indices into `times`, in time order. Bins whose best candidate is blurry stay empty
-    unless the bin would otherwise leave a gap; then the sharpest one is kept anyway.
+    def prep(img: np.ndarray) -> np.ndarray:
+        g = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY) if img.ndim == 3 else img
+        g = cv2.resize(g, (width, max(1, round(g.shape[0] * width / g.shape[1]))))
+        return g.astype(np.float32)
+
+    ga, gb = prep(a), prep(b)
+    (dx, dy), response = cv2.phaseCorrelate(ga, gb)
+    # a weak correlation peak means the frames barely overlap: count it as a large move
+    shift = np.hypot(dx, dy) / width
+    return float(max(shift, 0.5 * (1 - min(1.0, response * 4))))
+
+
+def progress(times: np.ndarray, shifts: np.ndarray) -> np.ndarray:
+    """Cumulative 'how much changed': half elapsed time, half view motion, each normalised to 1."""
+    t = (times - times[0]) / max(1e-6, times[-1] - times[0])
+    m = np.r_[0, np.cumsum(shifts[1:])]
+    m = m / m[-1] if m[-1] > 0 else t
+    return 0.5 * t + 0.5 * m
+
+
+def select_keyframes(
+    times: np.ndarray,
+    scores: np.ndarray,
+    max_keyframes: int,
+    min_quantile: float,
+    prog: np.ndarray | None = None,
+) -> list[int]:
+    """Pick at most one candidate per equal bin of progress (default: time): the sharpest above the blur floor.
+
+    With `prog` from `progress`, fast pans get more keyframes so neighbours still overlap for 3D.
+    Returns indices into `times`, in time order. A bin whose best candidate is blurry stays empty unless
+    that would leave a gap; then the sharpest one is kept anyway.
     """
     if len(times) == 0:
         return []
+    axis = times if prog is None else prog
     floor = float(np.quantile(scores, min_quantile)) if len(scores) > 1 else -np.inf
     n_bins = min(max_keyframes, len(times))
-    edges = np.linspace(times[0], times[-1] + 1e-6, n_bins + 1)
+    edges = np.linspace(axis[0], axis[-1] + 1e-6, n_bins + 1)
     picked: list[int] = []
     for lo, hi in zip(edges[:-1], edges[1:], strict=True):
-        idx = np.flatnonzero((times >= lo) & (times < hi))
+        idx = np.flatnonzero((axis >= lo) & (axis < hi))
         if len(idx) == 0:
             continue
         best = int(idx[np.argmax(scores[idx])])
-        if scores[best] >= floor or not picked or times[best] - times[picked[-1]] > 2 * (hi - lo):
+        if scores[best] >= floor or not picked or axis[best] - axis[picked[-1]] > 2 * (hi - lo):
             picked.append(best)
     return picked
 
@@ -110,8 +141,9 @@ def run(
     n_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     step = max(1, round(fps / candidate_fps))
 
-    # pass 1: score candidates
-    cand_frames, cand_scores = [], []
+    # pass 1: score candidates (sharpness) and measure how far the view moved between them
+    cand_frames, cand_scores, shifts = [], [], []
+    prev = None
     for fi in range(0, n_frames, step):
         cap.set(cv2.CAP_PROP_POS_FRAMES, fi)
         ok, img = cap.read()
@@ -119,10 +151,12 @@ def run(
             break
         cand_frames.append(fi)
         cand_scores.append(sharpness(img))
+        shifts.append(0.0 if prev is None else image_shift(prev, img))
+        prev = img
     frames = np.array(cand_frames)
     scores = np.array(cand_scores)
     times = frames / fps
-    picked = select_keyframes(times, scores, max_keyframes, min_quantile)
+    picked = select_keyframes(times, scores, max_keyframes, min_quantile, progress(times, np.array(shifts)))
 
     # pass 2: write the picked frames at full resolution
     keyframes: list[Keyframe] = []
@@ -143,6 +177,7 @@ def run(
         "n_frames": n_frames,
         "duration_s": round(n_frames / fps, 2),
         "n_candidates": len(frames),
+        "view_motion": round(float(np.sum(shifts)), 2),  # total image widths the view moved
         "has_audio": has_audio,
         "keyframes": [asdict(k) for k in keyframes],
     }

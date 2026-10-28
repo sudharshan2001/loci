@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 
 from loci.stages.extract import select_keyframes, sharpness
@@ -27,3 +28,25 @@ def test_select_picks_sharpest_in_bin() -> None:
 
 def test_select_empty() -> None:
     assert select_keyframes(np.array([]), np.array([]), 10, 0.3) == []
+
+
+def test_progress_puts_more_keyframes_in_fast_segments() -> None:
+    from loci.stages.extract import progress
+
+    times = np.arange(100) / 4.0  # 25 s
+    shifts = np.full(100, 0.01)
+    shifts[50:60] = 0.3  # a fast pan in the middle
+    picked = select_keyframes(times, np.ones(100), 20, 0.0, progress(times, shifts))
+    in_pan = sum(50 <= i < 60 for i in picked)
+    assert in_pan >= 4  # time-only selection would give about 2
+
+
+def test_image_shift_detects_translation() -> None:
+    from loci.stages.extract import image_shift
+
+    rng = np.random.default_rng(0)
+    img = (rng.random((120, 160)) * 255).astype(np.uint8)
+    img = cv2.GaussianBlur(img, (0, 0), 2)
+    moved = np.roll(img, 16, axis=1)
+    assert image_shift(img, img) < 0.02
+    assert 0.07 < image_shift(img, moved) < 0.15

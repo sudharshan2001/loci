@@ -205,6 +205,13 @@ def privacy(sid: str) -> dict[str, Any]:
     }
 
 
+@app.get("/quality/{sid}")
+def quality(sid: str) -> dict[str, Any]:
+    from loci.quality_run import run
+
+    return run(_session(sid))
+
+
 @app.get("/alerts/{sid}")
 def alerts(sid: str) -> list[dict[str, Any]]:
     mem = _db()

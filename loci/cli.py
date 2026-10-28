@@ -243,6 +243,7 @@ STAGES = [
     ("transcribe", "utterances.json"),
     ("store", None),
     ("check", None),
+    ("coach", None),
 ]
 
 
@@ -327,6 +328,19 @@ def check(session: str) -> None:
     typer.echo(f"{session}: {len(alerts)} alerts")
     for a in alerts:
         typer.echo(f"  [{a.get('kind')}] {a['text']}  ({', '.join(a.get('evidence', []))})")
+
+
+@app.command(name="coach")
+def coach_cmd(session: str) -> None:
+    """Capture quality: is the 3D trustworthy, and what to re-walk next time (no models needed)."""
+    from loci.quality_run import run as quality_run
+
+    s = _session(session)
+    q = quality_run(s)
+    r = q["reconstruction"]
+    typer.echo(f"{s.id}: 3D {r['verdict']} (bad steps {r['bad_step_fraction']:.0%}, max {r['max_speed_mps']} m/s)")
+    for tip in q["tips"]:
+        typer.echo(f"  - {tip}")
 
 
 @app.command()
