@@ -65,6 +65,30 @@ def session_id_for(video: Path) -> str:
     return f"{video.stem}_{h.hexdigest()[:8]}"
 
 
+def captured_at(video: Path) -> str:
+    """When the video was recorded: its creation_time tag, else the file's modification time (ISO 8601)."""
+    from datetime import datetime
+
+    res = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format_tags=creation_time",
+            "-of",
+            "default=nw=1:nk=1",
+            str(video),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    tag = res.stdout.strip()
+    if tag:
+        return tag.replace("Z", "+00:00")
+    return datetime.fromtimestamp(video.stat().st_mtime).astimezone().isoformat(timespec="seconds")
+
+
 def extract_audio(video: Path, out: Path) -> bool:
     cmd = ["ffmpeg", "-v", "error", "-y", "-i", str(video), "-vn", "-ac", "1", "-ar", "16000", str(out)]
     res = subprocess.run(cmd, capture_output=True, text=True)

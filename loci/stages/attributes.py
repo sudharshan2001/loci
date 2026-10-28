@@ -28,6 +28,16 @@ SIGN_Q = (
 # keyword in the label -> question and the state keys it should return
 STATE_QS: list[tuple[tuple[str, ...], str]] = [
     (
+        ("laundry", "clothes pile", "pile of clothes", "washing machine"),
+        "Is there still laundry here waiting (clothes piled up or in the bucket/machine)? Return JSON "
+        '{"laundry_pending": true/false}.',
+    ),
+    (
+        ("shop front", "stall", "shop entrance", "storefront", "kiosk"),
+        "Is this shop or stall open for business (shutter up, goods on display, lights on)? Return JSON "
+        '{"shop_open": true/false}.',
+    ),
+    (
         ("stove", "burner", "flame", "hob", "cooktop"),
         "Is any burner lit (visible flame)? Is anything (pan, pot) on a lit burner? Return JSON "
         '{"burner_lit": true/false, "anything_on_burner": true/false, "which_burner": "left/right/front/back/'

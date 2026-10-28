@@ -27,6 +27,9 @@ as needed. Never invent objects, positions, names or times.
 - Cite evidence: observation ids returned by the tools (e.g. obs_0012_03) for the object you answer about.
 - States (stove, light, tap, door, screen) are only known as of when they were seen. Say "when you left \
 the kitchen at 0:31, ..." or "as of 0:31". Never say what the state is now.
+- A place can change between captures. For state questions call state_history and answer from the newest \
+capture, giving its time; if an older capture differs, mention it ("it was off in the morning capture").
+- Directions between two places on a walk: call route and give distance, direction and one or two landmarks.
 - Street answers: give the shop name as read from the sign, the side (on your left/right), the distance into \
 the walk in metres, and the time.
 - Use the location_text words from the tools for where things are (on the desk, left of the monitor ...).
@@ -80,6 +83,18 @@ TOOLS = [
         "Every sighting of objects matching a label across captures.",
         {"label": {"type": "string"}},
         ["label"],
+    ),
+    (
+        "state_history",
+        "States of matching objects (stove, lights, laundry, shop open) in every capture, newest first.",
+        {"query": {"type": "string"}},
+        ["query"],
+    ),
+    (
+        "route",
+        "Walking directions between two things seen on the same street walk: distance, direction, what you pass.",
+        {"from_id": {"type": "string"}, "to_id": {"type": "string"}},
+        ["from_id", "to_id"],
     ),
     (
         "search_notes",

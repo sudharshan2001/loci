@@ -63,7 +63,15 @@ def extract(
     link = s.root / "video.mp4"
     if not link.exists():
         link.symlink_to(video.resolve())
-    s.write(s.meta, {"session_id": s.id, "scene": scene.value, "video": str(video.resolve())})
+    s.write(
+        s.meta,
+        {
+            "session_id": s.id,
+            "scene": scene.value,
+            "video": str(video.resolve()),
+            "captured_at": stage.captured_at(video),
+        },
+    )
     typer.echo(f"{s.id}: {len(kfs)} keyframes, {kfs[0].t:.2f}s-{kfs[-1].t:.2f}s" if kfs else f"{s.id}: none")
 
 
@@ -175,6 +183,7 @@ def attributes(session: str) -> None:
     else:
         with glimmer_server(s.root / "glimmer.log") as url:
             res = stage.run(s, get_vision_checker(url))
+    typer.echo(f"{s.id}: {len(res)} attributes")
 
 
 @app.command()

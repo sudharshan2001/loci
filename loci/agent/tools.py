@@ -63,6 +63,10 @@ class Memory:
         r = self.con.execute("SELECT scene FROM sessions WHERE session_id=?", (sid,)).fetchone()
         return r["scene"] if r else "?"
 
+    def _captured(self, sid: str) -> str | None:
+        r = self.con.execute("SELECT captured_at FROM sessions WHERE session_id=?", (sid,)).fetchone()
+        return r["captured_at"] if r else None
+
     # ---- tools -------------------------------------------------------------------------------------------
 
     def search_objects(self, query: str, limit: int = 8) -> list[dict[str, Any]]:
@@ -159,6 +163,63 @@ class Memory:
             "confidence": r["attribute_confidence"],
             "evidence": [obs["obs_id"]] if obs else [],
             "note": "state as of seen_at; not known now",
+        }
+
+    def state_history(self, query: str) -> list[dict[str, Any]]:
+        """Recorded states of matching objects in every capture, newest capture first."""
+        out = []
+        for h in self.search_objects(query, limit=20):
+            st = self.get_state(h["id"])
+            if st.get("state") is None:
+                continue
+            sid = h["session"]
+            out.append(
+                {
+                    "id": h["id"],
+                    "label": h["label"],
+                    "capture": sid,
+                    "captured_at": self._captured(sid),
+                    "state": st["state"],
+                    "seen_at": st["seen_at"],
+                    "confidence": st["confidence"],
+                    "evidence": st["evidence"],
+                }
+            )
+        return sorted(out, key=lambda x: x["captured_at"] or "", reverse=True)
+
+    def route(self, from_id: str, to_id: str) -> dict[str, Any]:
+        """Walking directions between two things seen on the same walk, following the path you took."""
+        a, b = self._obj(from_id), self._obj(to_id)
+        if a is None or b is None:
+            return {"error": f"unknown object {from_id if a is None else to_id}"}
+        if a["session_id"] != b["session_id"]:
+            return {"error": "the two places were seen in different captures"}
+        sid = a["session_id"]
+        da, db = a["distance_along_walk_m"], b["distance_along_walk_m"]
+        if da is None or db is None:  # home: straight line only
+            d = float(np.linalg.norm(np.array([a["cx"], a["cy"], a["cz"]]) - np.array([b["cx"], b["cy"], b["cz"]])))
+            return {"from": from_id, "to": to_id, "straight_line_m": round(d, 1)}
+        lo, hi = sorted((da, db))
+        between = self.con.execute(
+            "SELECT * FROM objects WHERE session_id=? AND distance_along_walk_m > ? AND distance_along_walk_m < ? "
+            "AND (text IS NOT NULL OR label LIKE '%stall%' OR label LIKE '%shop%') ORDER BY distance_along_walk_m",
+            (sid, lo, hi),
+        ).fetchall()
+        if db < da:
+            between = list(reversed(between))
+        return {
+            "from": from_id,
+            "to": to_id,
+            "walk_m": round(abs(db - da), 1),
+            "direction": "same way you walked" if db >= da else "back the way you came",
+            "destination_side": f"on your {b['side']}"
+            if db >= da
+            else f"on your {'left' if b['side'] == 'right' else 'right'}",
+            "you_pass": [
+                {"name": r["text"] or r["label"], "side": r["side"], "at_m": r["distance_along_walk_m"]}
+                for r in between
+            ],
+            "evidence": [b["best_obs"]],
         }
 
     def places_passed(self, session_id: str | None = None) -> list[dict[str, Any]]:
