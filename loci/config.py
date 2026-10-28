@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -14,8 +15,12 @@ DEFAULT_CONFIG = REPO_ROOT / "configs" / "default.yaml"
 
 @lru_cache(maxsize=4)
 def load_config(path: Path = DEFAULT_CONFIG) -> dict[str, Any]:
+    """The YAML config. LOCI_MEMORY_DB overrides paths.memory_db (e.g. a separate memory for test clips)."""
     with open(path) as f:
-        return yaml.safe_load(f)
+        cfg = yaml.safe_load(f)
+    if os.environ.get("LOCI_MEMORY_DB"):
+        cfg["paths"]["memory_db"] = os.environ["LOCI_MEMORY_DB"]
+    return cfg
 
 
 def repo_path(rel: str | Path) -> Path:

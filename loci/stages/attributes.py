@@ -48,7 +48,7 @@ STATE_QS: list[tuple[tuple[str, ...], str]] = [
         'Is this light switched on? Return JSON {"light_on": true/false}.',
     ),
     (("tap", "faucet"), 'Is water running from this tap? Return JSON {"water_running": true/false}.'),
-    (("door",), 'Is this door open or closed? Return JSON {"door_open": true/false}.'),
+    (("door", "gate"), 'Is this door or gate open or closed? Return JSON {"door_open": true/false}.'),
     (("window",), 'Is this window open or closed? Return JSON {"window_open": true/false}.'),
     (
         ("tv", "television", "monitor", "screen"),
