@@ -35,6 +35,9 @@ capture of that place.
 - Street answers: give the shop name as read from the sign, the side (on your left/right), the distance into \
 the walk in metres, and the time.
 - Use the location_text words from the tools for where things are (on the desk, left of the monitor ...).
+- If search returns things of a related kind but not the exact name (a "street stall" or "fruit stand" when \
+asked about a coconut stall), call look on the likely candidates before deciding. Answer about the one that \
+look confirms; only say it was not seen if look rules them all out.
 - If nothing matching was seen, say so plainly: "I haven't seen a <thing> in any capture." and set \
 object_id to null.
 - Keep the answer to one or two short spoken-style sentences.
@@ -106,6 +109,13 @@ TOOLS = [
     ),
     ("list_captures", "All captures with their scene type and capture time, oldest first.", {}, []),
     (
+        "look",
+        "Look at an object's redacted evidence photo and answer a visual question about it (e.g. is this a "
+        "coconut stall? is the shutter up?).",
+        {"id": {"type": "string"}, "question": {"type": "string"}},
+        ["id", "question"],
+    ),
+    (
         "search_notes",
         "Things the user said out loud during captures, with the objects in view.",
         {"text": {"type": "string"}},
@@ -128,9 +138,45 @@ def tool_schema() -> list[dict]:
     ]
 
 
-def call_tool(mem: Memory, name: str, args: dict[str, Any]) -> Any:
+def look(mem: Memory, base_url: str, id: str, question: str) -> dict[str, Any]:
+    """Glimmer looks at the object's best redacted observation (tight, context and wide crops)."""
+    from loci.providers import get_vision_checker
+    from loci.session import Session
+    from loci.stages.attributes import save_crops
+
+    row = mem._obj(id)
+    if row is None:
+        return {"error": f"no object {id}"}
+    s = Session.named(row["session_id"])
+    ob = next((o for o in s.read(s.observations) if o["obs_id"] == row["best_obs"]), None)
+    if ob is None:
+        return {"error": f"no observation for {id}"}
+    c = save_crops(s, ob)
+    ans = get_vision_checker(base_url).check(
+        c["ctx"],
+        f'{question} Return JSON {{"answer": short answer, "yes": true/false}}.',
+        tight=c["tight"],
+        wide=c["wide"],
+    )
+    return {
+        "id": id,
+        "answer": ans.answer,
+        "confidence": round(ans.confidence, 2),
+        "evidence": [row["best_obs"]],
+        "checked_by": "+".join(ans.attempts),
+    }
+
+
+def call_tool(mem: Memory, name: str, args: dict[str, Any], base_url: str | None = None) -> Any:
+    if name == "look":
+        if base_url is None:
+            return {"error": "look needs the vision model"}
+        try:
+            return look(mem, base_url, **args)
+        except TypeError as e:
+            return {"error": f"bad arguments for look: {e}"}
     fn = getattr(mem, name, None)
-    if fn is None or name not in {t[0] for t in TOOLS}:
+    if fn is None or name not in {t[0] for t in TOOLS} - {"look"}:
         return {"error": f"unknown tool {name}"}
     try:
         result = fn(**args)
@@ -238,7 +284,7 @@ def ask(question: str, mem: Memory, base_url: str, max_steps: int = 8, strength:
                     args = json.loads(c["function"].get("arguments") or "{}")
                 except json.JSONDecodeError:
                     args = {}
-                result = call_tool(mem, name, args)
+                result = call_tool(mem, name, args, base_url)
                 if name == "search_objects" and isinstance(result, list):
                     candidates = candidates or result
                 trace.append({"tool": name, "args": args, "result": result})

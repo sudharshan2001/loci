@@ -102,13 +102,17 @@ def verify(ans: dict[str, Any], mem: Memory) -> list[str]:
         if not any(fuzz.partial_ratio(n.lower(), text) >= 80 for n in names):
             problems.append(f"answer does not name the sign text {names[0]!r}")
 
-    # street distance and side
-    if row["distance_along_walk_m"] is not None:
+    # street distance and side: for a list answer ("objects"), each mention must fit one of the listed places
+    places = [r for r in (mem._obj(u) for u in related) if r is not None and r["distance_along_walk_m"] is not None]
+    if places:
         for m in METRES_RE.findall(text):
-            d, ref = float(m), row["distance_along_walk_m"]
-            if abs(d - ref) > max(10.0, 0.2 * ref):
-                problems.append(f"distance {d:.0f} m does not match stored {ref:.0f} m")
+            d = float(m)
+            if not any(
+                abs(d - r["distance_along_walk_m"]) <= max(10.0, 0.2 * r["distance_along_walk_m"]) for r in places
+            ):
+                refs = ", ".join(f"{r['distance_along_walk_m']:.0f}" for r in places)
+                problems.append(f"distance {d:.0f} m does not match stored {refs} m")
         for side in ("left", "right"):
-            if re.search(rf"\b(on your|to the|on the) {side}\b", text) and row["side"] != side:
-                problems.append(f"side '{side}' does not match stored side {row['side']!r}")
+            if re.search(rf"\b(on your|to the|on the) {side}\b", text) and not any(r["side"] == side for r in places):
+                problems.append(f"side '{side}' does not match stored side {places[0]['side']!r}")
     return problems

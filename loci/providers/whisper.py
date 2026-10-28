@@ -34,6 +34,12 @@ class FasterWhisperTranscriber:
             pcm = pcm.mean(1)
         samples = pcm.astype(np.float32) / 32768.0
         segments, info = self.model.transcribe(samples, beam_size=5, vad_filter=True)
-        out = [Utterance(round(s.start, 2), round(s.end, 2), s.text.strip()) for s in segments if s.text.strip()]
+        # whisper invents text from noise (street sounds became a Vietnamese "subscribe" line): keep only
+        # segments the model itself rates as speech and decodes with reasonable confidence
+        out = [
+            Utterance(round(seg.start, 2), round(seg.end, 2), seg.text.strip())
+            for seg in segments
+            if seg.text.strip() and seg.no_speech_prob < 0.5 and seg.avg_logprob > -1.0 and seg.compression_ratio < 2.4
+        ]
         log.info("transcribed %.1fs (%s): %d utterances", info.duration, info.language, len(out))
         return out
