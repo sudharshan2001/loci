@@ -15,10 +15,13 @@
     "searches": [
       {
         "query": "desk"
+      },
+      {
+        "query": "desk"
       }
     ],
     "attempts": 2,
-    "latency_s": 51.5
+    "latency_s": 65.6
   },
   {
     "q": "Where is my laptop?",
@@ -26,9 +29,9 @@
       "laptop"
     ],
     "clip": "home.mp4",
-    "answer": "I last saw a laptop on the desk in the bedroom, at 0:06. It is also on the desk in the office, last seen at 0:06.",
+    "answer": "I last saw a laptop on the desk in the bedroom, at about 0:06 into the home capture.",
     "ok": true,
-    "why": "labels ['laptop', 'laptop', 'laptop', 'laptop', 'laptop']",
+    "why": "labels ['laptop', 'laptop', 'laptop']",
     "verified": true,
     "searches": [
       {
@@ -36,7 +39,7 @@
       }
     ],
     "attempts": 1,
-    "latency_s": 36.0
+    "latency_s": 17.6
   },
   {
     "q": "Where's the keyboard?",
@@ -44,9 +47,9 @@
       "keyboard"
     ],
     "clip": "home.mp4",
-    "answer": "The keyboard is on the desk in the office, last seen at 0:06.",
+    "answer": "The keyboard you saw most clearly is on the desk in the office, last seen at 0:06. There’s also a low-confidence detection on the desk in the bedroom.",
     "ok": true,
-    "why": "labels ['keyboard', 'keyboard', 'keyboard', 'keyboard', 'keyboard', 'keyboard', 'keyboard']",
+    "why": "labels ['keyboard', 'keyboard', 'keyboard']",
     "verified": true,
     "searches": [
       {
@@ -54,7 +57,7 @@
       }
     ],
     "attempts": 1,
-    "latency_s": 15.0
+    "latency_s": 19.8
   },
   {
     "q": "Is the laundry done?",
@@ -64,9 +67,9 @@
       "clothes"
     ],
     "clip": "home.mp4",
-    "answer": "I haven't seen a washing machine or dryer in any capture. The only laundry-related thing I saw is a laundry pile left of the desk in the hallway at 0:11, with laundry buckets nearby. There's no evidence the laundry is done.",
+    "answer": "I haven't seen a washing machine or dryer in any capture, and a laundry pile was left of the desk in the hallway as of 0:11, so I can't confirm if the laundry is done.",
     "ok": true,
-    "why": "labels ['laundry pile', 'laundry bucket', 'laundry bucket', 'laundry bucket', 'laundry bucket', 'laundry bucket', 'laundry bucket', 'laundry bucket', 'clothes pile']",
+    "why": "labels ['laundry pile', 'laundry bucket', 'laundry bucket', 'laundry bucket']",
     "verified": true,
     "searches": [
       {
@@ -76,17 +79,14 @@
         "query": "washing machine"
       },
       {
-        "query": "washer"
-      },
-      {
-        "query": "clothes"
-      },
-      {
         "query": "dryer"
+      },
+      {
+        "query": "laundry machine"
       }
     ],
-    "attempts": 2,
-    "latency_s": 37.0
+    "attempts": 1,
+    "latency_s": 24.1
   },
   {
     "q": "Where's the purple bucket?",
@@ -95,9 +95,9 @@
       "laundry bucket"
     ],
     "clip": "home.mp4",
-    "answer": "I’ve seen a purple laundry bucket in the hallway left of the desk, last seen at 0:11.",
+    "answer": "The purple laundry bucket was last seen in the hallway left of the desk at 0:11.",
     "ok": true,
-    "why": "labels ['laundry bucket']",
+    "why": "labels ['laundry bucket', 'laundry bucket', 'laundry bucket', 'laundry bucket']",
     "verified": true,
     "searches": [
       {
@@ -105,7 +105,7 @@
       }
     ],
     "attempts": 1,
-    "latency_s": 17.3
+    "latency_s": 39.8
   },
   {
     "q": "Where did I leave my backpack?",
@@ -114,9 +114,9 @@
       "bag"
     ],
     "clip": "home.mp4",
-    "answer": "You left a backpack right of the desk in the hallway, last seen at 0:18.",
+    "answer": "I last saw a backpack in the hallway right of the desk, in the hallway, at 0:18. That’s the most recent sighting in the home capture.",
     "ok": true,
-    "why": "labels ['backpack', 'backpack', 'backpack', 'backpack', 'backpack']",
+    "why": "labels ['backpack', 'backpack', 'backpack']",
     "verified": true,
     "searches": [
       {
@@ -124,7 +124,7 @@
       }
     ],
     "attempts": 1,
-    "latency_s": 36.6
+    "latency_s": 27.8
   },
   {
     "q": "Where's the laptop stand?",
@@ -148,17 +148,20 @@
         "query": "stand"
       },
       {
-        "query": "laptop"
+        "query": "laptop stand"
+      },
+      {
+        "query": "stand"
       }
     ],
     "attempts": 1,
-    "latency_s": 25.3
+    "latency_s": 20.0
   },
   {
     "q": "Is the stove on?",
     "note": "no lit stove in this capture; a correct answer says no state is recorded or names the stove with as-of time",
     "clip": "home.mp4",
-    "answer": "Yes, the gas stove was on as of 0:15. The right burner was lit with nothing on it when it was last seen at 0:16 in the kitchen.",
+    "answer": "Yes — as of 0:15 the gas stove’s right burner is lit. It was seen in the kitchen at 0:16.",
     "ok": true,
     "why": "no expectation (manual check)",
     "verified": true,
@@ -168,7 +171,7 @@
       }
     ],
     "attempts": 1,
-    "latency_s": 10.1
+    "latency_s": 9.1
   },
   {
     "q": "Are the lights on?",
@@ -190,13 +193,13 @@
       }
     ],
     "attempts": 1,
-    "latency_s": 12.5
+    "latency_s": 16.3
   },
   {
     "q": "How far is the desk from the door?",
     "note": "metres, sanity range 1-5 m",
     "clip": "home.mp4",
-    "answer": "The desk in the office is about 0.9 m from the office door as of 0:06.",
+    "answer": "The desk you’re seeing in the hallway is about 1.4 m straight-line from the door in the office — roughly 1.36 m as measured when the desk was last seen at 0:18.",
     "ok": true,
     "why": "no expectation (manual check)",
     "verified": true,
@@ -208,8 +211,8 @@
         "query": "door"
       }
     ],
-    "attempts": 2,
-    "latency_s": 35.7
+    "attempts": 1,
+    "latency_s": 38.2
   },
   {
     "q": "Where's my passport?",
@@ -222,13 +225,10 @@
     "searches": [
       {
         "query": "passport"
-      },
-      {
-        "query": "passport book"
       }
     ],
     "attempts": 1,
-    "latency_s": 9.6
+    "latency_s": 14.6
   },
   {
     "q": "Where are my car keys?",
@@ -244,10 +244,13 @@
       },
       {
         "query": "keys"
+      },
+      {
+        "query": "key"
       }
     ],
     "attempts": 1,
-    "latency_s": 5.8
+    "latency_s": 12.8
   },
   {
     "q": "Where was the coconut stall?",
@@ -256,9 +259,9 @@
       "coconut"
     ],
     "clip": "street.mp4",
-    "answer": "I haven't seen a coconut stall in any capture.",
+    "answer": "The coconut stall was on your left, about 12 m into the walk, seen at 0:02.",
     "ok": false,
-    "why": "refused",
+    "why": "labels ['fruit stand']",
     "verified": true,
     "searches": [
       {
@@ -269,7 +272,7 @@
       }
     ],
     "attempts": 1,
-    "latency_s": 66.8
+    "latency_s": 81.0
   },
   {
     "q": "What shops did I pass?",
@@ -280,17 +283,13 @@
       "stall"
     ],
     "clip": "street.mp4",
-    "answer": "I'm not sure. The last confirmed sighting of the signboard was on your right, about 62 m into the walk, at 0:22.",
-    "ok": false,
-    "why": "not sure (unverified)",
-    "verified": false,
-    "searches": [
-      {
-        "query": "shop"
-      }
-    ],
-    "attempts": 2,
-    "latency_s": 94.3
+    "answer": "On the street walk you passed a fruit stand on the left at 12.3 m / 0:06, a street stall on the left at the same spot, then shop fronts and signs on the right around 32–38 m / 0:13–0:15 including MMM MIRUNDA, RED CURRY, EID CANTY, 180 CENTR, BIG GUNTY, UR CITY and HI COPY!, plus SH 7 on the left at 43.7 m / 0:16, and later stalls and signs around 57–62 m / 0:20–0:22 such as Independence, MARTY, GATE, BITE, Shree Sai, Sri Lakshmi.",
+    "ok": true,
+    "why": "labels ['fruit stand', 'fruit stand', 'street stall', 'shop front', 'fruit stand', 'shop front', 'signboard', 'signboard', 'signboard', 'shop sign', 'shop sign', 'shop sign', 'signboard', 'shop sign', 'shop front', 'signboard', 'street stall', 'signboard', 'signboard', 'signboard', 'signboard', 'signboard', 'signboard', 'street stall', 'street stall', 'street stall', 'street stall', 'street stall']",
+    "verified": true,
+    "searches": [],
+    "attempts": 1,
+    "latency_s": 18.3
   },
   {
     "q": "Was the coconut stall open?",
@@ -298,28 +297,9 @@
       "coconut stall"
     ],
     "clip": "street.mp4",
-    "answer": "I haven't seen a coconut stall in any capture.",
+    "answer": "I haven't seen evidence that the coconut vendor stall was open or closed. I did see a red cart loaded with green coconuts typical of a street coconut vendor stall on your left, about 12 m into the walk, as of 0:02.",
     "ok": false,
-    "why": "refused",
-    "verified": true,
-    "searches": [
-      {
-        "query": "coconut stall"
-      },
-      {
-        "query": "coconut"
-      }
-    ],
-    "attempts": 2,
-    "latency_s": 175.9
-  },
-  {
-    "q": "How do I get from the coconut stall to the next shop?",
-    "note": "uses route; distance and direction along the walk",
-    "clip": "street.mp4",
-    "answer": "I haven't seen a coconut stall in any capture.",
-    "ok": false,
-    "why": "refused",
+    "why": "labels ['fruit stand']",
     "verified": true,
     "searches": [
       {
@@ -330,7 +310,29 @@
       }
     ],
     "attempts": 1,
-    "latency_s": 54.4
+    "latency_s": 70.3
+  },
+  {
+    "q": "How do I get from the coconut stall to the next shop?",
+    "note": "uses route; distance and direction along the walk",
+    "clip": "street.mp4",
+    "answer": "From the coconut vendor cart on your left about 12 m into the walk, seen at 0:02, keep walking forward along the street about 21 m further to the next shop front on your right around 33 m into the walk, seen at 0:09.",
+    "ok": true,
+    "why": "no expectation (manual check)",
+    "verified": true,
+    "searches": [
+      {
+        "query": "coconut stall"
+      },
+      {
+        "query": "coconut"
+      },
+      {
+        "query": "coconut"
+      }
+    ],
+    "attempts": 1,
+    "latency_s": 75.8
   },
   {
     "q": "Which side of the road were the shops on?",
@@ -340,7 +342,7 @@
       "stall"
     ],
     "clip": "street.mp4",
-    "answer": "In the street walk the shop fronts you passed were on your right, e.g. the shop front first seen at 0:09 on your right about 33 m into the walk, passed at 0:13; another shop front on your right about 37 m in, passed at 0:14.",
+    "answer": "The shops you passed were on your right side of the walk. For example, shop front about 33 m into the walk was on your right and was first seen at 0:09.",
     "ok": true,
     "why": "labels ['shop front', 'shop front', 'shop front']",
     "verified": true,
@@ -350,7 +352,7 @@
       }
     ],
     "attempts": 2,
-    "latency_s": 49.6
+    "latency_s": 44.4
   },
   {
     "q": "Where's the nearest ATM?",
@@ -365,10 +367,13 @@
         "query": "ATM"
       },
       {
+        "query": "bank"
+      },
+      {
         "query": "cash machine"
       }
     ],
     "attempts": 1,
-    "latency_s": 8.9
+    "latency_s": 12.2
   }
 ]

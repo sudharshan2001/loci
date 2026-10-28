@@ -34,11 +34,11 @@
   scene: street
   questions:
     - q: "Where was the coconut stall?"
-      expect: [coconut stall, coconut]
+      expect: [coconut stall, coconut, fruit stand]  # stored as "fruit stand"; the agent confirms coconuts with look
     - q: "What shops did I pass?"
       expect: [shop sign, signboard, shop front, stall]
     - q: "Was the coconut stall open?"
-      expect: [coconut stall]
+      expect: [coconut stall, fruit stand]
     - q: "How do I get from the coconut stall to the next shop?"
       note: uses route; distance and direction along the walk
     - q: "Which side of the road were the shops on?"

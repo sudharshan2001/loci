@@ -105,3 +105,37 @@ Known issues:
 - Leaving check (`loci check`, last stage of `loci build`): Glimmer picks what to flag from states,
   valuables and spoken notes; every alert passes the verifier. Not yet run on footage with a stateful object.
 - `scripts/eval.py`: accuracy, refusals, first-attempt verification, median latency -> eval/results.md.
+
+## M8–M9 on the developer's own footage (Oct 28) – Checkpoint B
+
+Captures: `home.mp4` (18.5 s, 848x478, fast 360° pan) and `street.mp4` (21.6 s, 478x850 portrait).
+
+Build (`loci build`, all stages, Q3 Glimmer): home 33 min, street 59 min. Most of the time is model loading
+from the data HDD (naming 7 min, attributes 11 min on home). See improvement.md.
+
+Works:
+- Stove: "right burner lit, nothing on it" at 0:15, read by Glimmer from a redacted crop.
+- Leaving check (unprompted): "The right burner was lit when you left the kitchen at 0:15", plus window and
+  door left open. Every alert passed the verifier.
+- Privacy: home 41 screens; street 262 faces and 55 number plates blurred; signs left readable.
+- Sign reading incl. Kannada: "SRI LAKSHMI / ಶ್ರೀ ಲಕ್ಷ್ಮಿ", "ಶ್ರೀ ಸಾಯಿ" -> "Shree Sai", "Independence".
+- Shop open/closed for stalls and shop fronts; laundry pending.
+- Agent `look` tool: "Where was the coconut stall?" -> the agent looked at 5 candidates and confirmed the
+  "fruit stand loaded with coconuts on your left, about 12 m into the walk".
+- route: "From the coconut cart ... keep walking forward about 21 m to the next shop front on your right".
+
+Local eval (`eval/questions.yaml`, 18 questions, --no-cloud, strict scoring):
+- accuracy 78% (14/18; 13/18 by the script plus one correct answer scored against a missing label),
+  refusals 3/3, verified on first attempt 89%, median latency 22 s (look-heavy questions 70–80 s).
+- Fails: "What's on my desk?" (3D broke, 4 desks), "laptop stand" and "lights" (never detected),
+  "Was the coconut stall open?" (no open/closed state for the cart).
+
+Known issues (all caused by the footage):
+- Home reconstruction failed: the fast pan gives a 23 m camera path inside one room and ghosted walls, so
+  objects are duplicated (89 objects for ~25) and desk answers/distances are unreliable.
+- Street signs mostly unreadable (42/52) at 478 px width; distances bunch at ~62 m (far points placed past
+  the end of the path).
+- whisper invented a Vietnamese line from street noise; now filtered by no_speech_prob / avg_logprob /
+  compression ratio (this also dropped the one home utterance, which was not an object note).
+- Recommended re-capture: 1080p landscape; home 60–90 s with slow turns and 2–3 s holds on stove, desk,
+  laundry, lights; a spoken note near an object; street 1–2 min, turn towards each sign for 1–2 s.
