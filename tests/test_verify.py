@@ -114,8 +114,8 @@ def test_refusal_passes(mem: Memory) -> None:
 def test_list_answer_distances_match_listed_places(mem: Memory) -> None:
     mem.con.execute(
         "INSERT INTO objects (object_id, session_id, label, aliases, box_min, box_max, distance_along_walk_m, side,"
-        " text, best_obs) VALUES ('shop_sign_2','street','shop sign','[]','[0,0,0]','[1,1,1]',30.0,'left','Fresh Fruits',"
-        "'obs_shop_sign_2')"
+        " text, best_obs) VALUES ('shop_sign_2','street','shop sign','[]','[0,0,0]','[1,1,1]',30.0,'left',"
+        "'Fresh Fruits','obs_shop_sign_2')"
     )
     ans = {
         "answer": "You passed Fresh Fruits on your left at about 30 m, then Sudarshan Silks on your right at 80 m.",
@@ -126,3 +126,12 @@ def test_list_answer_distances_match_listed_places(mem: Memory) -> None:
     assert verify(ans, mem) == []
     bad = {**ans, "answer": "You passed Fresh Fruits at 150 m and Sudarshan Silks on your right at 80 m."}
     assert any("150" in p for p in verify(bad, mem))
+
+
+def test_street_sides_are_not_home_relations(mem: Memory) -> None:
+    ans = {
+        "answer": "On the street walk you passed Sudarshan Silks on the right, about 80 m in.",
+        "object_id": "street:shop_sign_1",
+        "evidence": ["obs_shop_sign_1"],
+    }
+    assert verify(ans, mem) == []

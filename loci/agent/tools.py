@@ -144,6 +144,15 @@ class Memory:
             if score >= 80:
                 scored.append((score, r))
         scored.sort(key=lambda x: (-x[0], -x[1]["last_seen"]))
+        # at most 3 per label, so a related kind ("fruit stand" for "coconut stall") is not crowded out by
+        # many objects of one label
+        per_label: dict[str, int] = {}
+        varied = []
+        for sc, r in scored:
+            per_label[r["label"]] = per_label.get(r["label"], 0) + 1
+            if per_label[r["label"]] <= 3:
+                varied.append((sc, r))
+        scored = varied
         return [
             {
                 "id": uid(r),

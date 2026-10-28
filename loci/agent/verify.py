@@ -71,7 +71,9 @@ def verify(ans: dict[str, Any], mem: Memory) -> list[str]:
         (sid, local),
     ).fetchall()
     stored = {(r["relation"].replace("_of", " of").replace("_", " "), r["label"]) for r in rels}
-    for src in (ans.get("location_text") or "").lower(), text:
+    # street places have no home relations; "on the right/left" there is a side, checked below
+    sources = [] if row["distance_along_walk_m"] is not None else [(ans.get("location_text") or "").lower(), text]
+    for src in sources:
         for word, target in REL_RE.findall(src):
             target = target.strip()
             if word == "on" and target in {"your left", "your right", "the left", "the right"}:
@@ -91,7 +93,8 @@ def verify(ans: dict[str, Any], mem: Memory) -> list[str]:
         if pol is False and said_pos and not said_neg:
             problems.append(f"answer says on/lit/open but stored state is {state}")
         seen = fmt_time(row["state_seen_at"])
-        if seen and seen not in text and ans.get("seen_at") != seen:
+        claims_state = said_neg or said_pos
+        if claims_state and seen and seen not in text and ans.get("seen_at") != seen:
             problems.append(f"state answer must say when it was seen ({seen})")
         if re.search(r"\b(right now|currently|is still|at the moment)\b", text):
             problems.append("state answers must be 'as of' when seen, not about now")

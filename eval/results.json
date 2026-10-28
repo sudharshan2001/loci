@@ -12,8 +12,13 @@
     "ok": false,
     "why": "not sure (unverified)",
     "verified": false,
+    "searches": [
+      {
+        "query": "desk"
+      }
+    ],
     "attempts": 2,
-    "latency_s": 47.2
+    "latency_s": 51.5
   },
   {
     "q": "Where is my laptop?",
@@ -21,12 +26,17 @@
       "laptop"
     ],
     "clip": "home.mp4",
-    "answer": "The most recent laptop I saw in the home capture is on the desk in the bedroom, last seen at 0:06.",
+    "answer": "I last saw a laptop on the desk in the bedroom, at 0:06. It is also on the desk in the office, last seen at 0:06.",
     "ok": true,
-    "why": "labels ['laptop', 'silver laptop', 'laptop']",
+    "why": "labels ['laptop', 'laptop', 'laptop', 'laptop', 'laptop']",
     "verified": true,
-    "attempts": 2,
-    "latency_s": 73.9
+    "searches": [
+      {
+        "query": "laptop"
+      }
+    ],
+    "attempts": 1,
+    "latency_s": 36.0
   },
   {
     "q": "Where's the keyboard?",
@@ -34,12 +44,17 @@
       "keyboard"
     ],
     "clip": "home.mp4",
-    "answer": "The keyboard I’ve seen most recently is on the desk in the office, last seen at 0:07 in capture poc_room1_2.",
+    "answer": "The keyboard is on the desk in the office, last seen at 0:06.",
     "ok": true,
-    "why": "labels ['keyboard', 'keyboard', 'keyboard', 'keyboard']",
+    "why": "labels ['keyboard', 'keyboard', 'keyboard', 'keyboard', 'keyboard', 'keyboard', 'keyboard']",
     "verified": true,
+    "searches": [
+      {
+        "query": "keyboard"
+      }
+    ],
     "attempts": 1,
-    "latency_s": 24.6
+    "latency_s": 15.0
   },
   {
     "q": "Is the laundry done?",
@@ -49,12 +64,29 @@
       "clothes"
     ],
     "clip": "home.mp4",
-    "answer": "I haven't seen a washing machine or dryer in any capture, and I only saw a laundry pile left of the desk in the hallway at 0:11. I can't confirm if the laundry is done from what was seen.",
+    "answer": "I haven't seen a washing machine or dryer in any capture. The only laundry-related thing I saw is a laundry pile left of the desk in the hallway at 0:11, with laundry buckets nearby. There's no evidence the laundry is done.",
     "ok": true,
-    "why": "labels ['laundry pile', 'laundry bucket', 'laundry bucket', 'laundry bucket', 'laundry bucket', 'laundry bucket', 'laundry bucket', 'laundry bucket']",
+    "why": "labels ['laundry pile', 'laundry bucket', 'laundry bucket', 'laundry bucket', 'laundry bucket', 'laundry bucket', 'laundry bucket', 'laundry bucket', 'clothes pile']",
     "verified": true,
-    "attempts": 1,
-    "latency_s": 29.7
+    "searches": [
+      {
+        "query": "laundry"
+      },
+      {
+        "query": "washing machine"
+      },
+      {
+        "query": "washer"
+      },
+      {
+        "query": "clothes"
+      },
+      {
+        "query": "dryer"
+      }
+    ],
+    "attempts": 2,
+    "latency_s": 37.0
   },
   {
     "q": "Where's the purple bucket?",
@@ -63,12 +95,17 @@
       "laundry bucket"
     ],
     "clip": "home.mp4",
-    "answer": "I haven't seen a purple bucket in any capture.",
-    "ok": false,
-    "why": "refused",
+    "answer": "I’ve seen a purple laundry bucket in the hallway left of the desk, last seen at 0:11.",
+    "ok": true,
+    "why": "labels ['laundry bucket']",
     "verified": true,
+    "searches": [
+      {
+        "query": "purple bucket"
+      }
+    ],
     "attempts": 1,
-    "latency_s": 23.1
+    "latency_s": 17.3
   },
   {
     "q": "Where did I leave my backpack?",
@@ -77,12 +114,17 @@
       "bag"
     ],
     "clip": "home.mp4",
-    "answer": "I last saw your backpack right of the desk, in the hallway, as of 0:18.",
+    "answer": "You left a backpack right of the desk in the hallway, last seen at 0:18.",
     "ok": true,
-    "why": "labels ['backpack', 'backpack', 'backpack', 'backpack', 'backpack', 'backpack']",
+    "why": "labels ['backpack', 'backpack', 'backpack', 'backpack', 'backpack']",
     "verified": true,
+    "searches": [
+      {
+        "query": "backpack"
+      }
+    ],
     "attempts": 1,
-    "latency_s": 17.1
+    "latency_s": 36.6
   },
   {
     "q": "Where's the laptop stand?",
@@ -95,19 +137,38 @@
     "ok": false,
     "why": "refused",
     "verified": true,
+    "searches": [
+      {
+        "query": "laptop stand"
+      },
+      {
+        "query": "laptop stand"
+      },
+      {
+        "query": "stand"
+      },
+      {
+        "query": "laptop"
+      }
+    ],
     "attempts": 1,
-    "latency_s": 20.2
+    "latency_s": 25.3
   },
   {
     "q": "Is the stove on?",
     "note": "no lit stove in this capture; a correct answer says no state is recorded or names the stove with as-of time",
     "clip": "home.mp4",
-    "answer": "As of 0:15 when you left the kitchen, the gas stove was on — the right burner was lit with nothing on it.",
+    "answer": "Yes, the gas stove was on as of 0:15. The right burner was lit with nothing on it when it was last seen at 0:16 in the kitchen.",
     "ok": true,
     "why": "no expectation (manual check)",
     "verified": true,
+    "searches": [
+      {
+        "query": "stove"
+      }
+    ],
     "attempts": 1,
-    "latency_s": 12.5
+    "latency_s": 10.1
   },
   {
     "q": "Are the lights on?",
@@ -117,19 +178,38 @@
     "ok": false,
     "why": "refused",
     "verified": true,
+    "searches": [
+      {
+        "query": "light"
+      },
+      {
+        "query": "lights"
+      },
+      {
+        "query": "lamp"
+      }
+    ],
     "attempts": 1,
-    "latency_s": 18.4
+    "latency_s": 12.5
   },
   {
     "q": "How far is the desk from the door?",
     "note": "metres, sanity range 1-5 m",
     "clip": "home.mp4",
-    "answer": "The bedroom desk you saw at 0:14 is about 2.2 m straight-line from the bedroom door seen at the same time; the desk is in the bedroom and the door is in the bedroom.",
+    "answer": "The desk in the office is about 0.9 m from the office door as of 0:06.",
     "ok": true,
     "why": "no expectation (manual check)",
     "verified": true,
-    "attempts": 1,
-    "latency_s": 53.2
+    "searches": [
+      {
+        "query": "desk"
+      },
+      {
+        "query": "door"
+      }
+    ],
+    "attempts": 2,
+    "latency_s": 35.7
   },
   {
     "q": "Where's my passport?",
@@ -139,8 +219,16 @@
     "ok": true,
     "why": "refused",
     "verified": true,
+    "searches": [
+      {
+        "query": "passport"
+      },
+      {
+        "query": "passport book"
+      }
+    ],
     "attempts": 1,
-    "latency_s": 15.2
+    "latency_s": 9.6
   },
   {
     "q": "Where are my car keys?",
@@ -150,8 +238,16 @@
     "ok": true,
     "why": "refused",
     "verified": true,
+    "searches": [
+      {
+        "query": "car keys"
+      },
+      {
+        "query": "keys"
+      }
+    ],
     "attempts": 1,
-    "latency_s": 6.9
+    "latency_s": 5.8
   },
   {
     "q": "Where was the coconut stall?",
@@ -164,8 +260,16 @@
     "ok": false,
     "why": "refused",
     "verified": true,
+    "searches": [
+      {
+        "query": "coconut stall"
+      },
+      {
+        "query": "coconut"
+      }
+    ],
     "attempts": 1,
-    "latency_s": 25.7
+    "latency_s": 66.8
   },
   {
     "q": "What shops did I pass?",
@@ -180,8 +284,13 @@
     "ok": false,
     "why": "not sure (unverified)",
     "verified": false,
+    "searches": [
+      {
+        "query": "shop"
+      }
+    ],
     "attempts": 2,
-    "latency_s": 47.0
+    "latency_s": 94.3
   },
   {
     "q": "Was the coconut stall open?",
@@ -193,8 +302,16 @@
     "ok": false,
     "why": "refused",
     "verified": true,
-    "attempts": 1,
-    "latency_s": 42.6
+    "searches": [
+      {
+        "query": "coconut stall"
+      },
+      {
+        "query": "coconut"
+      }
+    ],
+    "attempts": 2,
+    "latency_s": 175.9
   },
   {
     "q": "How do I get from the coconut stall to the next shop?",
@@ -204,8 +321,16 @@
     "ok": false,
     "why": "refused",
     "verified": true,
+    "searches": [
+      {
+        "query": "coconut stall"
+      },
+      {
+        "query": "coconut"
+      }
+    ],
     "attempts": 1,
-    "latency_s": 23.3
+    "latency_s": 54.4
   },
   {
     "q": "Which side of the road were the shops on?",
@@ -215,12 +340,17 @@
       "stall"
     ],
     "clip": "street.mp4",
-    "answer": "In the street walk the shop fronts you passed were seen on your right, about 33 m into the walk, when you saw it at 0:09. Example: shop front on your right, about 33 m into the walk, last seen at 0:09.",
+    "answer": "In the street walk the shop fronts you passed were on your right, e.g. the shop front first seen at 0:09 on your right about 33 m into the walk, passed at 0:13; another shop front on your right about 37 m in, passed at 0:14.",
     "ok": true,
-    "why": "labels ['shop front', 'shop front', 'shop sign']",
+    "why": "labels ['shop front', 'shop front', 'shop front']",
     "verified": true,
+    "searches": [
+      {
+        "query": "shop"
+      }
+    ],
     "attempts": 2,
-    "latency_s": 51.3
+    "latency_s": 49.6
   },
   {
     "q": "Where's the nearest ATM?",
@@ -230,7 +360,15 @@
     "ok": true,
     "why": "refused",
     "verified": true,
+    "searches": [
+      {
+        "query": "ATM"
+      },
+      {
+        "query": "cash machine"
+      }
+    ],
     "attempts": 1,
-    "latency_s": 9.7
+    "latency_s": 8.9
   }
 ]
