@@ -330,6 +330,26 @@ def check(session: str) -> None:
         typer.echo(f"  [{a.get('kind')}] {a['text']}  ({', '.join(a.get('evidence', []))})")
 
 
+@app.command()
+def forget(object_id: str, yes: bool = typer.Option(False, "--yes", help="confirm: this cannot be undone")) -> None:
+    """Forget an object for good: memory rows, evidence, its pixels in stored frames and its 3D points."""
+    from loci.config import repo_path
+    from loci.forget import forget as do_forget
+    from loci.session import Session
+    from loci.stages.store import connect
+
+    sid, _, oid = object_id.rpartition(":")
+    if not yes:
+        typer.echo(f"This permanently forgets {object_id}. Re-run with --yes to confirm.")
+        raise typer.Exit(1)
+    con = connect(repo_path(_cfg()["paths"]["memory_db"]))
+    res = do_forget(Session.named(sid), con, oid)
+    typer.echo(
+        f"forgot {res['object_id']} ({res['label']}): {res['frames_blurred']} frames blurred, "
+        f"{res['points_removed']} points removed, {res['files_removed']} evidence files deleted"
+    )
+
+
 @app.command(name="coach")
 def coach_cmd(session: str) -> None:
     """Capture quality: is the 3D trustworthy, and what to re-walk next time (no models needed)."""

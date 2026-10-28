@@ -228,6 +228,25 @@ def privacy(sid: str) -> dict[str, Any]:
     }
 
 
+class ForgetRequest(BaseModel):
+    id: str
+    confirm: bool = False
+
+
+@app.post("/forget")
+def forget(req: ForgetRequest) -> dict[str, Any]:
+    """Permanently forget an object (memory, evidence, pixels, points). Requires confirm=true."""
+    from loci.forget import forget as do_forget
+
+    if not req.confirm:
+        raise HTTPException(400, "forgetting cannot be undone: send confirm=true")
+    sid, _, oid = req.id.rpartition(":")
+    try:
+        return do_forget(_session(sid), _db().con, oid)
+    except KeyError as e:
+        raise HTTPException(404, str(e)) from e
+
+
 @app.get("/navigate/{sid}/{object_id}")
 def navigate(sid: str, object_id: str) -> dict[str, Any]:
     """Robot path from 'you are here' to beside the object, over the floor grid."""
