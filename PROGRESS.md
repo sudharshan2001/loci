@@ -166,3 +166,19 @@ Kannada and Tamil (all verified):
 - "நான் எந்த கடைகளை கடந்தேன்?" -> ordered list with distance, side and open/closed (22 s)
 - Coconut cart now has an open/closed state (open, conf 0.70); the verifier accepts state times within 2 s.
 The eval file now has 23 questions (5 Kannada/Tamil).
+
+## Oct 29 – sample-clip eval and search fixes
+
+Third-party sample clips (9 x `2_Snakes_Aagye`, separate memory via `LOCI_MEMORY_DB`, 24 questions):
+58% -> 71% after fixes (median 14 s). Fixed: plural/compound search (shelves -> wooden bookshelf, white pots ->
+white flower pot), synonyms (brick hut, chips, bed, speaker, garden), and a real bug: observation ids repeat
+across captures, so the agent paired one capture's TV evidence with another capture's TV. Evidence ids are now
+capture-qualified (`<session>:obs_...`) and the verifier rejects cross-capture evidence.
+Remaining: speaker never detected; "garden" is not an area label; "what's on the bed/shelves" needs better
+anchors.
+
+Own footage (23 questions incl. 5 Kannada/Tamil): 74% (17/23), median 18 s.
+Known issue: run-to-run variance. Questions that use `look` (coconut stall) or long lists ("what shops did I
+pass") pass in one run and fail in the next, because Glimmer samples at temperature 1.0 (model card setting).
+For the live demo use the answer cache (`loci warm`); consider a lower agent temperature and majority vote on
+`look` (see improvement.md).

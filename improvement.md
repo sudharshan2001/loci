@@ -28,3 +28,6 @@ Ideas and fixes deferred so they don't block the milestone schedule.
 - **Appearance matching** (SAM crop features) to link the same object across captures when it moved far.
 - **Open/closed for carts** (the coconut cart has no shutter): ask "is someone selling, goods out?".
 - **Parallel `look` calls** to cut the 70–80 s answers that check several candidates.
+- **Answer stability**: lower the agent's temperature (e.g. 0.6) for tool-calling turns and take a majority of
+  2–3 `look` calls; measure pass rate over 3 eval runs, not 1.
+- **Garden / terrace / balcony** as area labels, so notes said outdoors link to the right place.

@@ -1,29 +1,34 @@
 # Eval results (questions.yaml)
 
-- questions: 18
-- accuracy: 78%
+- questions: 23
+- accuracy: 74%
 - refusals correct: 3/3
-- verified on first attempt: 72%
-- median latency: 22.2 s
+- verified on first attempt: 74%
+- median latency: 17.9 s
 - cloud calls: 0 (local only)
 
 | | question | answer | why | s |
 | --- | --- | --- | --- | --- |
-| ❌ | What's on my desk? | I'm not sure. The last confirmed sighting of the desk was in the hallway, at 0:18. | not sure (unverified) | 44.1 |
-| ✅ | Where is my laptop? | Your laptop was last seen on the desk in the bedroom at 0:06 of the home capture, on the desk in the bedroom. | labels ['laptop', 'laptop', 'laptop'] | 16.7 |
-| ✅ | Where's the keyboard? | The keyboard you’re looking for is on the desk in the office, last seen at 0:06 on the desk in the office. | labels ['keyboard', 'keyboard', 'keyboard'] | 14.0 |
-| ❌ | Is the laundry done? | I'm not sure. The last confirmed sighting of the laundry bucket was left of the desk, in the hallway, at 0:18. | not sure (unverified) | 35.5 |
-| ✅ | Where's the purple bucket? | The purple bucket was last seen at 0:11 left of the desk, in the hallway. | labels ['laundry bucket'] | 15.7 |
-| ✅ | Where did I leave my backpack? | The last sighting of the backpack is at 0:18, right of the desk in the hallway. The capture notes it is near the desk and to the left of the door, and it was also seen at 0:17 in the hallway generally. | labels ['backpack', 'backpack', 'backpack'] | 27.5 |
-| ❌ | Where's the laptop stand? | I haven't seen a laptop stand in any capture. | refused | 24.2 |
-| ✅ | Is the stove on? | The gas stove was on as of 0:15 — the right burner was lit with nothing on it when you were last in the kitchen. | no expectation (manual check) | 8.8 |
-| ❌ | Are the lights on? | I haven't seen a light in any capture. | refused | 14.3 |
-| ✅ | How far is the desk from the door? | The desk you were looking at in the hallway is about 1.4 m from the nearest door as seen at 0:18 – roughly 1.36 m away, in the hallway. | no expectation (manual check) | 20.2 |
-| ✅ | Where's my passport? | I haven't seen a passport in any capture. | refused | 7.2 |
-| ✅ | Where are my car keys? | I haven't seen a car keys in any capture. | refused | 8.3 |
-| ✅ | Where was the coconut stall? | I saw a coconut vendor cart on your left about 12 m into the walk, last seen at 0:02 (passed around 0:06). | labels ['fruit stand', 'fruit stand'] | 61.6 |
-| ✅ | What shops did I pass? | On the street walk you passed a fruit stand on the left at 12.3 m / 0:06, a street stall on the left at 12.3 m / 0:06, 180 CENTR on the right at 26.0 m / 0:12, HI COPY! on the right at 26.0 m / 0:12, BIG GUNTY on the right at 27.5 m / 0:12, UR CITY on the right at 27.5 m / 0:12, RED CURRY on the right at 27.5 m / 0:12, shop fronts and MMM MIRUNDA / EID CANTY on the right at 32.7 m / 0:13, fruit stand on the right at 36.7 m / 0:14, SH 7 on the left at 43.7 m / 0:16, MARTY and a street stall on the left at 47.5 m / 0:17, shop front / ಮಲ್ಲ at 58–59 m / 0:20, GATE / BITE on the left and ಶ್ರೀ ಸಾಯಿ / street stall on the right at ~61–62 m / 0:21, and Independence / SRI LAKSHMI ಶ್ರೀ ಲಕ್ಷ್ಮಿ with several street stalls on both sides at 62.3 m / 0:22. | labels ['fruit stand', 'fruit stand', 'street stall', 'shop sign', 'signboard', 'shop sign', 'shop sign', 'signboard', 'shop front', 'shop front', 'signboard', 'signboard', 'fruit stand', 'shop sign', 'signboard', 'street stall', 'shop front', 'signboard', 'signboard', 'signboard', 'signboard', 'street stall', 'signboard', 'signboard', 'street stall', 'street stall', 'street stall', 'street stall'] | 55.9 |
-| ✅ | Was the coconut stall open? | I have a coconut stall on the left about 12 m into the walk seen at 0:02, but I haven’t seen any information in the captures about whether it was open or closed. | labels ['fruit stand', 'fruit stand'] | 78.3 |
-| ✅ | How do I get from the coconut stall to the next shop? | The coconut stall you saw is the fruit stand on your left at about 12 m into the walk, passed at 0:06. Keep walking forward along the street; the next shop fronts appear on your right around 33 m into the walk, about 20 m ahead of the stall. The first shop front after the stall is on your right at ~32.7 m, seen at 0:13. | no expectation (manual check) | 71.1 |
-| ✅ | Which side of the road were the shops on? | On the street walk shops and stalls were seen on both sides of the road. For example the fruit stand/street stall was on your left at 12.3 m into the walk, passed at 0:06, and the 180 CENTR / HI COPY! signs and shop fronts were on your right around 26–32.7 m, passed at 0:12–0:13. | labels ['fruit stand', 'fruit stand', 'shop sign', 'signboard', 'shop front'] | 28.5 |
-| ✅ | Where's the nearest ATM? | I haven't seen an ATM in any capture. | refused | 10.8 |
+| ✅ | What's on my desk? | The most recent desk sighting at 0:18 is the hallway desk, which the capture shows in the hallway with no items listed as on it in the tools. The office desk that was last seen at 0:06 is in the office and, when you left it, it was holding a computer monitor, a keyboard, a computer mouse, another keyboard, a laptop, another laptop, another keyboard, another keyboard, another keyboard, another laptop, another mouse, another monitor, plus a kitchen shelf and a pillow that were also recorded on it in the hallway context. | labels ['desk', 'computer monitor', 'keyboard', 'computer mouse', 'keyboard', 'laptop', 'laptop', 'keyboard', 'keyboard', 'keyboard', 'laptop', 'computer mouse', 'computer monitor'] | 41.9 |
+| ✅ | Where is my laptop? | Your laptop was last seen on the desk in the bedroom at 0:06; the newest sighting is on the desk in the bedroom from the home walk. | labels ['laptop', 'laptop', 'laptop'] | 12.0 |
+| ✅ | Where's the keyboard? | The keyboard is on the desk in the office, last seen at 0:06 when you left the office. | labels ['keyboard', 'keyboard', 'keyboard'] | 12.5 |
+| ❌ | Is the laundry done? | I'm not sure. The last confirmed sighting of the laundry bucket was left of the desk, in the hallway, at 0:18. | not sure (unverified) | 31.9 |
+| ✅ | Where's the purple bucket? | The purple laundry bucket is left of the desk, in the hallway, last seen at 0:11 when you were in the hallway. | labels ['laundry bucket', 'laundry bucket', 'desk'] | 13.4 |
+| ✅ | Where did I leave my backpack? | I last saw your backpack right of the desk, in the hallway at 0:18. It moved between sightings in that capture, so check by the desk in the hallway. | labels ['backpack', 'backpack', 'backpack', 'backpack'] | 13.3 |
+| ❌ | Where's the laptop stand? | I haven't seen a laptop stand in any capture. | refused | 21.0 |
+| ✅ | Is the stove on? | The gas stove was on as of 0:15 — the right burner was lit with nothing on it. This is when it was last seen at 0:16, so state is as of 0:15. | no expectation (manual check) | 6.9 |
+| ❌ | Are the lights on? | I haven't seen any lights in any capture. | refused | 11.2 |
+| ✅ | How far is the desk from the door? | The desk you saw in the hallway is about 2.6 m straight-line from the bedroom door you saw at 0:13. The desk is in the hallway, the door is in the bedroom. | no expectation (manual check) | 22.6 |
+| ✅ | Where's my passport? | I haven't seen a passport in any capture. | refused | 10.8 |
+| ✅ | Where are my car keys? | I haven't seen car keys in any capture. | refused | 9.1 |
+| ✅ | ಸ್ಟವ್ ಆನ್ ಆಗಿತ್ತಾ? | ಹೌದು, ಅಡುಗೆಮನೆಯಲ್ಲಿರುವ ಗ್ಯಾಸ್ ಸ್ಟವ್ 0:15ರಲ್ಲಿ ಬಲ ಬರ್ನರ್ ಬೆಳಗಿತ್ತು. | labels ['gas stove', 'gas stove'] | 12.0 |
+| ✅ | அடுப்பு எரிந்துகொண்டிருந்ததா? | ஆம், அடுப்பை நீங்கள் விட்டுச்சென்றபோது 0:15 மணிக்கு எரிந்துகொண்டிருந்தது — வலது பர்னர் எரிந்து, அதில் எதுவும் வைக்கப்படவில்லை. | labels ['gas stove'] | 12.0 |
+| ✅ | என் பை எங்கே? | கடைசியாக பார்த்தது 0:18-ல் ஹால்வேயில் மேசையில் (மேசையில், ஹால்வேயில்) இருந்த பிளாஸ்டிக் பையாகும். அது நகரக்கூடியது, அப்போது மேசையில் இருந்தது; இப்போது இருக்கிறதா என்பது உறுதியில்லை. | labels ['plastic bag', 'plastic bag', 'plastic bag', 'plastic bag'] | 17.9 |
+| ✅ | Where was the coconut stall? | The coconut stall is on your left, about 12 m into the walk, last seen at 0:02. | labels ['fruit stand', 'fruit stand'] | 63.2 |
+| ❌ | What shops did I pass? | I'm not sure, and I couldn't find it in any capture. | refused | 56.8 |
+| ✅ | Was the coconut stall open? | I haven't seen a clearly labelled coconut stall on this walk. The only coconut selling cart that appears in the captures is a cart on your left about 12 m into the walk, seen at 0:02, and it is a coconut selling cart but there is no sign of being actively operated/open. | labels ['fruit stand'] | 118.4 |
+| ❌ | How do I get from the coconut stall to the next shop? | I haven't seen a coconut stall in any capture. | refused | 54.2 |
+| ✅ | Which side of the road were the shops on? | Shops were seen on both sides of the road during the walk. On your right, a shop front was on your right about 33 m into the walk when it was seen at 0:09, and the same side continued with more right-side shops later; left-side shops/signs were also passed, e.g. a shop sign SH 7 on your left about 44 m into the walk at 0:11. | labels ['shop front', 'shop front', 'shop front', 'shop sign'] | 38.6 |
+| ✅ | Where's the nearest ATM? | I haven't seen an ATM in any capture. | refused | 9.1 |
+| ✅ | ಶ್ರೀ ಲಕ್ಷ್ಮಿ ಅಂಗಡಿ ಎಲ್ಲಿತ್ತು? | SRI LAKSHMI ಶ್ರೀ ಲಕ್ಷ್ಮಿ ಎಂದು ಬರೆದಿರುವ signboard ನಡೆದ ವಾಕ್‌ನಲ್ಲಿ ಸುಮಾರು 62 ಮೀಟರ್ ನಲ್ಲಿ ನಿಮ್ಮ ಬಲಗಡೆ ಇತ್ತು; 0:22 ಕ್ಕೆ ಕಂಡಿತು. | labels ['signboard'] | 22.5 |
+| ❌ | தேங்காய் கடை எங்கே இருந்தது? | நான் எந்த கேப்ச்சரிலும் தேங்காய் கடையை பார்க்கவில்லை. | refused | 68.1 |
