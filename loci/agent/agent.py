@@ -29,6 +29,8 @@ as needed. Never invent objects, positions, names or times.
 the kitchen at 0:31, ..." or "as of 0:31". Never say what the state is now.
 - A place can change between captures. For state questions call state_history and answer from the newest \
 capture, giving its time; if an older capture differs, mention it ("it was off in the morning capture").
+- "What changed / moved since ...": call list_captures, then what_changed with the earlier and the later \
+capture of that place.
 - Directions between two places on a walk: call route and give distance, direction and one or two landmarks.
 - Street answers: give the shop name as read from the sign, the side (on your left/right), the distance into \
 the walk in metres, and the time.
@@ -96,6 +98,13 @@ TOOLS = [
         {"from_id": {"type": "string"}, "to_id": {"type": "string"}},
         ["from_id", "to_id"],
     ),
+    (
+        "what_changed",
+        "What changed between two captures of the same place: added, removed, moved, state changes.",
+        {"session_a": {"type": "string", "description": "earlier capture"}, "session_b": {"type": "string"}},
+        ["session_a", "session_b"],
+    ),
+    ("list_captures", "All captures with their scene type and capture time, oldest first.", {}, []),
     (
         "search_notes",
         "Things the user said out loud during captures, with the objects in view.",

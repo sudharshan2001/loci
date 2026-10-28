@@ -1,0 +1,47 @@
+# Eval questions for the developer's own captures (data/raw/home.mp4, data/raw/street.mp4).
+# expect: labels the answered object should match (fuzzy). refuse: the right answer is "not seen".
+# state: keys the stored state must have. Questions without expect/state are checked by hand.
+
+- clip: home.mp4
+  scene: home
+  questions:
+    - q: "What's on my desk?"
+      expect: [computer monitor, laptop, keyboard, desk]
+    - q: "Where is my laptop?"
+      expect: [laptop]
+    - q: "Where's the keyboard?"
+      expect: [keyboard]
+    - q: "Is the laundry done?"
+      expect: [laundry pile, laundry bucket, clothes]
+    - q: "Where's the purple bucket?"
+      expect: [bucket, laundry bucket]
+    - q: "Where did I leave my backpack?"
+      expect: [backpack, bag]
+    - q: "Where's the laptop stand?"
+      expect: [laptop stand, stand]
+    - q: "Is the stove on?"
+      note: no lit stove in this capture; a correct answer says no state is recorded or names the stove with as-of time
+    - q: "Are the lights on?"
+      note: answer must be as-of the capture time or say no state was recorded
+    - q: "How far is the desk from the door?"
+      note: metres, sanity range 1-5 m
+    - q: "Where's my passport?"
+      refuse: true
+    - q: "Where are my car keys?"
+      refuse: true
+
+- clip: street.mp4
+  scene: street
+  questions:
+    - q: "Where was the coconut stall?"
+      expect: [coconut stall, coconut]
+    - q: "What shops did I pass?"
+      expect: [shop sign, signboard, shop front, stall]
+    - q: "Was the coconut stall open?"
+      expect: [coconut stall]
+    - q: "How do I get from the coconut stall to the next shop?"
+      note: uses route; distance and direction along the walk
+    - q: "Which side of the road were the shops on?"
+      expect: [shop front, shop sign, stall]
+    - q: "Where's the nearest ATM?"
+      refuse: true

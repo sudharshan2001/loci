@@ -187,6 +187,66 @@ class Memory:
             )
         return sorted(out, key=lambda x: x["captured_at"] or "", reverse=True)
 
+    def list_captures(self) -> list[dict[str, Any]]:
+        rows = self.con.execute("SELECT session_id, scene, captured_at FROM sessions ORDER BY captured_at").fetchall()
+        return [dict(r) for r in rows]
+
+    def what_changed(self, session_a: str, session_b: str) -> dict[str, Any]:
+        """Differences from capture a (earlier) to capture b (later): added, removed, moved, state changes.
+
+        Objects are matched by label (and sign text). "Moved" compares where each thing was (its location text),
+        which works even when the two captures are not registered into one coordinate frame.
+        """
+
+        def by_key(sid: str) -> dict[str, list[sqlite3.Row]]:
+            out: dict[str, list[sqlite3.Row]] = {}
+            for r in self.con.execute("SELECT * FROM objects WHERE session_id=? ORDER BY first_seen", (sid,)):
+                out.setdefault(r["text"] or r["label"], []).append(r)
+            return out
+
+        a, b = by_key(session_a), by_key(session_b)
+        if not a or not b:
+            return {"error": f"no objects in {session_a if not a else session_b}"}
+        res: dict[str, Any] = {
+            "from": session_a,
+            "to": session_b,
+            "from_captured_at": self._captured(session_a),
+            "to_captured_at": self._captured(session_b),
+            "added": [],
+            "removed": [],
+            "moved": [],
+            "state_changed": [],
+        }
+        for key in sorted(set(a) | set(b)):
+            ra, rb = a.get(key, []), b.get(key, [])
+            if len(rb) > len(ra):
+                res["added"] += [{"id": uid(r), "label": key, "where": r["location_text"]} for r in rb[len(ra) :]]
+            if len(ra) > len(rb):
+                res["removed"] += [{"id": uid(r), "label": key, "was": r["location_text"]} for r in ra[len(rb) :]]
+            for x, y in zip(ra, rb, strict=False):
+                if x["location_text"] and y["location_text"] and x["location_text"] != y["location_text"]:
+                    res["moved"].append(
+                        {
+                            "id": uid(y),
+                            "label": key,
+                            "was": x["location_text"],
+                            "now": y["location_text"],
+                            "evidence": [y["best_obs"]],
+                        }
+                    )
+                if x["state"] and y["state"] and json.loads(x["state"]) != json.loads(y["state"]):
+                    res["state_changed"].append(
+                        {
+                            "id": uid(y),
+                            "label": key,
+                            "was": json.loads(x["state"]),
+                            "now": json.loads(y["state"]),
+                            "seen_at": fmt_time(y["state_seen_at"]),
+                            "evidence": [y["best_obs"]],
+                        }
+                    )
+        return res
+
     def route(self, from_id: str, to_id: str) -> dict[str, Any]:
         """Walking directions between two things seen on the same walk, following the path you took."""
         a, b = self._obj(from_id), self._obj(to_id)

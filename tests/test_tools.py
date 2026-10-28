@@ -61,3 +61,26 @@ def test_route_forward_and_back() -> None:
 
 def test_route_rejects_different_captures() -> None:
     assert "error" in _mem().route("am:gas_stove_1", "walk:fruit_stall_1")
+
+
+def test_what_changed_states_moves_added_removed() -> None:
+    mem = _mem()
+    con = mem.con
+    for sid, oid, label, where in [
+        ("am", "keys_1", "keys", "on the desk"),
+        ("pm", "keys_1", "keys", "on the bed"),
+        ("am", "laundry_pile_1", "laundry pile", "near the door"),
+        ("pm", "phone_1", "phone", "on the desk"),
+    ]:
+        con.execute(
+            "INSERT INTO objects (object_id, session_id, label, aliases, location_text, best_obs) VALUES (?,?,?,?,?,?)",
+            (oid, sid, label, "[]", where, f"obs_{oid}"),
+        )
+    ch = mem.what_changed("am", "pm")
+    assert [c["label"] for c in ch["state_changed"]] == ["gas stove"]
+    assert ch["state_changed"][0]["was"] == {"burner_lit": False} and ch["state_changed"][0]["now"] == {
+        "burner_lit": True
+    }
+    assert [(m["label"], m["was"], m["now"]) for m in ch["moved"]] == [("keys", "on the desk", "on the bed")]
+    assert [x["label"] for x in ch["added"]] == ["phone"]
+    assert [x["label"] for x in ch["removed"]] == ["laundry pile"]

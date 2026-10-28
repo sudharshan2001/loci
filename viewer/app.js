@@ -146,6 +146,26 @@ async function loadSession(sid) {
   camera.near = r / 500; camera.far = r * 20; camera.updateProjectionMatrix();
   $("legend").textContent = `${current.objects.length} objects · ${geo.attributes.position.count.toLocaleString()} points`;
   await loadPrivacy(sid);
+  await loadAlerts(sid);
+}
+
+async function loadAlerts(sid) {
+  const alerts = await api(`/alerts/${sid}`);
+  $("alerts").hidden = !alerts.length;
+  const fmt = (t) => (t == null ? "" : `${Math.floor(t / 60)}:${String(Math.round(t % 60)).padStart(2, "0")}`);
+  $("alertlist").innerHTML = "";
+  for (const a of alerts) {
+    const li = document.createElement("li");
+    li.innerHTML = `${a.text}<small>${a.kind} · seen at ${fmt(a.seen_at)}</small>`;
+    // an alert is shown like an answer: highlight the object, show its evidence
+    li.onclick = () => {
+      const ans = { question: "Leaving check", answer: a.text, object_id: a.object_id, evidence: a.evidence,
+                    session: sid, seen_at: fmt(a.seen_at), verified: true, confidence: 1, used_cloud: false };
+      showAnswer(ans);
+      highlight(ans);
+    };
+    $("alertlist").appendChild(li);
+  }
 }
 
 async function loadPrivacy(sid) {
@@ -272,12 +292,15 @@ $("mic").onclick = async () => {
 
 resize();
 requestAnimationFrame(animate);
-// ?session=<id> opens a session, ?q=<question> asks on load (handy for demos and screenshots)
+// ?session=<id> opens a session, ?q=<question> asks on load, ?alert=<n> opens the n-th alert
+// (handy for demos and screenshots)
 const params = new URLSearchParams(location.search);
 loadSessions()
   .then(() => params.get("session") && loadSession(params.get("session")))
   .then(() => {
     const q = params.get("q");
     if (q) { $("q").value = q; $("askform").requestSubmit(); }
+    const n = params.get("alert");
+    if (n !== null) $("alertlist").children[Number(n)]?.click();
   })
   .catch((e) => { $("legend").textContent = e.message; });

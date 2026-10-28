@@ -1,6 +1,7 @@
 """FastAPI server for the viewer. Run with `loci serve`.
 
-Glimmer is started once for the lifetime of the server (or an already-running one is reused). Spoken
+Glimmer is started on the first question and kept for the lifetime of the server (or an already-running
+one is reused); browsing scenes, evidence and the privacy ledger needs no GPU. Spoken
 questions are transcribed on the CPU so they never compete with Glimmer for GPU memory.
 """
 
@@ -9,7 +10,8 @@ from __future__ import annotations
 import json
 import logging
 import tempfile
-from contextlib import asynccontextmanager
+import threading
+from contextlib import ExitStack, asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -34,13 +36,26 @@ def _db() -> Memory:
     return Memory(connect(repo_path(load_config()["paths"]["memory_db"])))
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
+_GLIMMER_LOCK = threading.Lock()
+_STACK = ExitStack()
+
+
+def _glimmer() -> str:
+    """Start Glimmer on the first question (or reuse a running server), so browsing needs no GPU."""
     from loci.llm import glimmer_server
 
-    with glimmer_server(repo_path("debug") / "glimmer_api.log") as url:
-        STATE["glimmer"] = url
+    with _GLIMMER_LOCK:
+        if "glimmer" not in STATE:
+            STATE["glimmer"] = _STACK.enter_context(glimmer_server(repo_path("debug") / "glimmer_api.log"))
+    return STATE["glimmer"]
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
         yield
+    finally:
+        _STACK.close()  # stops Glimmer if this server started it
 
 
 app = FastAPI(title="Loci", lifespan=lifespan)
@@ -59,7 +74,7 @@ def _session(sid: str) -> Session:
 
 @app.post("/ask")
 def ask_text(q: Question) -> dict[str, Any]:
-    ans = ask(q.question, _db(), STATE["glimmer"])
+    ans = ask(q.question, _db(), _glimmer())
     ans["question"] = q.question
     return ans
 
@@ -82,7 +97,7 @@ async def ask_audio(audio: UploadFile = File(...)) -> dict[str, Any]:
     question = " ".join(u.text for u in utts).strip()
     if not question:
         raise HTTPException(422, "no speech recognised")
-    ans = ask(question, _db(), STATE["glimmer"])
+    ans = ask(question, _db(), _glimmer())
     ans["question"] = question
     ans["transcriber"] = "faster-whisper (local)"
     return ans
