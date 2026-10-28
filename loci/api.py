@@ -74,7 +74,15 @@ def _session(sid: str) -> Session:
 
 @app.post("/ask")
 def ask_text(q: Question) -> dict[str, Any]:
-    ans = ask(q.question, _db(), _glimmer())
+    from loci import answer_cache
+
+    mem = _db()
+    use_cache = load_config().get("demo", {}).get("cache_answers", False)
+    if use_cache and (hit := answer_cache.get(q.question, mem.con)):
+        return hit
+    ans = ask(q.question, mem, _glimmer())
+    if use_cache:
+        answer_cache.put(q.question, mem.con, ans)
     ans["question"] = q.question
     return ans
 

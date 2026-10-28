@@ -164,8 +164,14 @@ utterance_links, alerts).
 ## 7. Agent
 
 Glimmer with tools via llama-server (OpenAI-compatible `/v1/chat/completions`, `base_url` from config).
-Tools: `search_objects`, `get_state`, `places_passed`, `get_object`, `objects_near`, `objects_on`, `history`,
-`what_changed`, `search_notes`, `get_evidence`, `look`.
+Tools: `search_objects`, `get_object`, `get_state`, `places_passed`, `objects_on`, `objects_near`, `history`,
+`state_history`, `route`, `what_changed`, `list_captures`, `look`, `last_known`, `search_notes`.
+- `look` = Glimmer looks at an object's redacted evidence crop (used to confirm related kinds, e.g. a "fruit
+  stand" that is the coconut stall).
+- `last_known` = object permanence: the same thing linked across captures in the room frame, with a
+  "still there" probability that decays by movability (keys/phones ~6 h, bags ~12 h, laundry ~24 h, furniture
+  never).
+- First attempt reasons at low strength, a verifier retry at medium. Answers in the question's language.
 
 Answer contract:
 ```json
@@ -181,7 +187,18 @@ error, then a "not sure" answer with the last confirmed sighting. Log every step
 ## 8. API and viewer
 
 FastAPI: `POST /ask`, `POST /ask_audio`, `GET /sessions`, `GET /scene/{session}`, `GET /objects`,
-`GET /evidence/{observation_id}.jpg`, `GET /privacy/{session}`, `GET /alerts/{session}`.
+`GET /evidence/{session}/{observation_id}.jpg`, `GET /privacy/{session}`, `GET /alerts/{session}`,
+`GET /navigate/{session}/{object_id}` (robot floor path), `GET /quality/{session}` (capture coach),
+`POST /forget` (confirm=true). Glimmer starts on the first question only.
+
+Beyond the spec (built Oct 28):
+- Capture coach (`loci coach`): judges the 3D (impossible camera jumps) and says what to re-walk.
+- Motion-aware keyframes: spacing follows how far the view moved, not just time.
+- Room frame: home captures auto-align to the earliest one via static objects (`loci/register.py`).
+- Robot floor grid + A* (`loci/navmap.py`): `robot_goal` carries waypoints and the unscanned share.
+- "See what you saw": the evidence photo hangs in 3D where it was taken; "View from where you stood".
+- Forget (`loci forget <id> --yes`): blurs the object in stored frames, cuts its points, deletes evidence.
+- Demo answer cache (`demo.cache_answers`, `loci warm`) for instant, repeatable live answers.
 Viewer: one static three.js page. Load `scene.ply`, highlight the answered object, fly to it, draw a path
 from "you are here". Side panel: answer, evidence frame, timestamp, confidence, local/cloud badge, robot goal
 JSON, privacy ledger, alerts. Session picker; street sessions show the walk path with shop markers.

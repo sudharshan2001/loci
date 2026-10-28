@@ -42,7 +42,8 @@ asked about a coconut stall), call look on the likely candidates before deciding
 look confirms; only say it was not seen if look rules them all out.
 - If nothing matching was seen, say so plainly: "I haven't seen a <thing> in any capture." and set \
 object_id to null.
-- Keep the answer to one or two short spoken-style sentences.
+- Keep the answer to one or two short spoken-style sentences, in the same language as the question (answer a \
+Kannada, Tamil or Hindi question in that language; keep shop names as written on the sign).
 
 When you are done, reply with ONLY this JSON:
 {"answer": str, "object_id": "<session>:<object>" or null, "objects": [other ids mentioned], \
@@ -273,7 +274,10 @@ def not_sure(mem: Memory, question: str, candidates: list[dict], problems: list[
     )
 
 
-def ask(question: str, mem: Memory, base_url: str, max_steps: int = 8, strength: str = "medium") -> dict[str, Any]:
+def ask(
+    question: str, mem: Memory, base_url: str, max_steps: int = 8, strengths: tuple[str, str] = ("low", "medium")
+) -> dict[str, Any]:
+    """Answer with tools. The first attempt reasons at low strength (fast); a verifier retry escalates."""
     t0 = time.perf_counter()
     trace: list[dict[str, Any]] = []
     messages: list[dict[str, Any]] = [
@@ -288,7 +292,7 @@ def ask(question: str, mem: Memory, base_url: str, max_steps: int = 8, strength:
             last = step == max_steps - 1
             if last:
                 messages.append({"role": "user", "content": "Stop using tools. Reply with only the final JSON now."})
-            msg = chat(base_url, messages, strength=strength, **({} if last else {"tools": tool_schema()}))
+            msg = chat(base_url, messages, strength=strengths[attempt], **({} if last else {"tools": tool_schema()}))
             calls = msg.get("tool_calls") or []
             messages.append(
                 {"role": "assistant", "content": msg.get("content") or "", "tool_calls": calls}

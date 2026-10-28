@@ -15,8 +15,16 @@ Ideas and fixes deferred so they don't block the milestone schedule.
 - **Screen on/off survives blurring.** Before redaction, record only the mean brightness and variance inside
   each screen mask (no content) and store it as a hint; blurred screens currently look dark, so Glimmer says
   "off" for lit screens.
-- **Duplicate objects at frame edges** (three chairs for one): second merge pass for same-label objects whose
-  union boxes intersect.
+- ~~Duplicate objects at frame edges~~: second merge pass added; remaining duplicates come from broken 3D.
 - **Long anchors** (a desk seen in parts): build the anchor's top surface from its points (plane fit) instead
   of a box, so things at the far end are still "on the desk".
 - **Answer wording**: avoid repeating the area ("your desk in the bedroom is in the bedroom").
+
+## Next ideas
+
+- **Time slider** in the viewer across captures of the same room (needs a second home capture; room frame
+  and `what_changed` are ready).
+- **Chunked MapAnything** with overlapping windows for walks longer than 80 keyframes.
+- **Appearance matching** (SAM crop features) to link the same object across captures when it moved far.
+- **Open/closed for carts** (the coconut cart has no shutter): ask "is someone selling, goods out?".
+- **Parallel `look` calls** to cut the 70–80 s answers that check several candidates.

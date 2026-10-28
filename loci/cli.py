@@ -350,6 +350,28 @@ def forget(object_id: str, yes: bool = typer.Option(False, "--yes", help="confir
     )
 
 
+@app.command()
+def warm(questions: Path = typer.Argument(..., exists=True)) -> None:
+    """Pre-answer a question file into the demo answer cache (turn on demo.cache_answers to serve from it)."""
+    import yaml
+
+    from loci import answer_cache
+    from loci.agent.agent import ask as run_ask
+    from loci.agent.tools import Memory
+    from loci.config import repo_path
+    from loci.llm import glimmer_server
+    from loci.stages.store import connect
+
+    spec = yaml.safe_load(questions.read_text())
+    qs = [q["q"] for c in spec for q in c["questions"]] if isinstance(spec[0], dict) else list(spec)
+    mem = Memory(connect(repo_path(_cfg()["paths"]["memory_db"])))
+    with glimmer_server(repo_path("debug") / "glimmer_warm.log") as url:
+        for q in qs:
+            ans = run_ask(q, mem, url)
+            answer_cache.put(q, mem.con, ans)
+            typer.echo(f"{'cached' if ans.get('verified') else 'NOT cached (unverified)'}: {q}")
+
+
 @app.command(name="coach")
 def coach_cmd(session: str) -> None:
     """Capture quality: is the 3D trustworthy, and what to re-walk next time (no models needed)."""
