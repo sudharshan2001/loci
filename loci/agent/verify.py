@@ -47,6 +47,11 @@ def verify(ans: dict[str, Any], mem: Memory) -> list[str]:
     if not ans.get("evidence"):
         problems.append("no evidence cited")
     for ev in ans.get("evidence") or []:
+        # evidence ids may be capture-qualified ("<session>:obs_0033_01"); obs ids repeat across captures
+        ev_sid, _, ev = ev.rpartition(":")
+        if ev_sid and ev_sid != sid:
+            problems.append(f"evidence {ev_sid}:{ev} is from capture {ev_sid}, but the object is in {sid}")
+            continue
         ob = mem.con.execute("SELECT * FROM observations WHERE session_id=? AND obs_id=?", (sid, ev)).fetchone()
         if ob is None:
             problems.append(f"evidence {ev} does not exist in session {sid}")

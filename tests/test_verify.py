@@ -142,3 +142,19 @@ def test_state_time_within_two_seconds_is_fine(mem: Memory) -> None:
     assert verify(ans, mem) == []
     far = {**ans, "answer": "As of 0:40 the burner was lit."}
     assert any("when it was seen" in p for p in verify(far, mem))
+
+
+def test_evidence_from_another_capture_is_rejected(mem: Memory) -> None:
+    from loci.agent.agent import qualify_evidence
+
+    ok = {
+        "answer": "Your keys are on the desk.",
+        "object_id": "home:keys_1",
+        "evidence": ["home:obs_keys_1"],
+        "location_text": "on the desk, in the bedroom",
+    }
+    assert verify(ok, mem) == []
+    bad = {**ok, "evidence": ["street:obs_keys_1"]}
+    assert any("from capture street" in p for p in verify(bad, mem))
+    res = qualify_evidence([{"id": "home:tv_1", "evidence": ["obs_1"]}, {"capture": "pm", "evidence": ["obs_2"]}])
+    assert res == [{"id": "home:tv_1", "evidence": ["home:obs_1"]}, {"capture": "pm", "evidence": ["pm:obs_2"]}]

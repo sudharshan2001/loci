@@ -261,7 +261,7 @@ function drawRobotPath(goal) {
 let photoView = null;
 function drawPhoto(ans) {
   photoView = null;
-  const ev = (ans.evidence || [])[0];
+  const ev = ((ans.evidence || [])[0] || "").split(":").pop();  // ids may be "<capture>:obs_..."
   if (!ev || !current.cameras) return;
   const k = parseInt(ev.slice(4, 8), 10);
   const cam = current.cameras.find((c) => c.keyframe === k);
@@ -308,7 +308,7 @@ function showAnswer(ans) {
     ans.latency_s ? `<span class="badge">${ans.latency_s}s</span>` : "",
   ].join("");
 
-  const ev = (ans.evidence || [])[0];
+  const ev = ((ans.evidence || [])[0] || "").split(":").pop();  // ids may be "<capture>:obs_..."
   $("evidence").hidden = !ev;
   if (ev && ans.session) {
     $("evimg").src = `/evidence/${ans.session}/${ev}.jpg`;

@@ -24,7 +24,8 @@ or along a street; times like 0:31 are seconds into that capture.
 Rules:
 - Always call search_objects first. Then get_object / get_state / places_passed / objects_on / search_notes \
 as needed. Never invent objects, positions, names or times.
-- Cite evidence: observation ids returned by the tools (e.g. obs_0012_03) for the object you answer about.
+- Cite evidence: the evidence ids returned by the tools (e.g. home:obs_0012_03), copied exactly, from the same \
+capture as the object you answer about.
 - States (stove, light, tap, door, screen) are only known as of when they were seen. Say "when you left \
 the kitchen at 0:31, ..." or "as of 0:31". Never say what the state is now.
 - "Where did I leave X?" / "Is X still there?": call last_known. Answer from the newest sighting with its \
@@ -177,12 +178,35 @@ def look(mem: Memory, base_url: str, id: str, question: str) -> dict[str, Any]:
     }
 
 
+def qualify_evidence(result: Any, sid: str | None = None) -> Any:
+    """Prefix evidence ids with their capture ("<session>:obs_...") everywhere in a tool result.
+
+    Observation ids are only unique within a capture; without the prefix the agent can pair one capture's
+    evidence with another capture's object.
+    """
+    if isinstance(result, list):
+        return [qualify_evidence(x, sid) for x in result]
+    if not isinstance(result, dict):
+        return result
+    own = result.get("session") or result.get("capture")
+    if not own and isinstance(result.get("id"), str) and ":" in result["id"]:
+        own = result["id"].rpartition(":")[0]
+    own = own or sid
+    out = {}
+    for k, v in result.items():
+        if k == "evidence" and isinstance(v, list) and own:
+            out[k] = [e if ":" in e else f"{own}:{e}" for e in v]
+        else:
+            out[k] = qualify_evidence(v, own)
+    return out
+
+
 def call_tool(mem: Memory, name: str, args: dict[str, Any], base_url: str | None = None) -> Any:
     if name == "look":
         if base_url is None:
             return {"error": "look needs the vision model"}
         try:
-            return look(mem, base_url, **args)
+            return qualify_evidence(look(mem, base_url, **args))
         except TypeError as e:
             return {"error": f"bad arguments for look: {e}"}
     fn = getattr(mem, name, None)
@@ -198,7 +222,7 @@ def call_tool(mem: Memory, name: str, args: dict[str, Any], base_url: str | None
             "note": "Nothing matching in any capture. Try at most one other wording; "
             "if that also finds nothing, answer that it was not seen.",
         }
-    return result
+    return qualify_evidence(result)
 
 
 def complete(ans: dict[str, Any], mem: Memory) -> dict[str, Any]:

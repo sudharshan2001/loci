@@ -144,3 +144,33 @@ def test_last_known_links_across_aligned_captures_and_decays() -> None:
     )  # 6 h later, keys half-life 6 h
     ch = mem.what_changed("am", "pm")
     assert ("keys", 2.0) in [(m["label"], m["moved_m"]) for m in ch["moved"]]
+
+
+def test_plurals_compounds_and_new_synonyms() -> None:
+    from loci.agent.tools import expand_query, norm, singular
+
+    assert [singular(w) for w in ["shelves", "pots", "boxes", "batteries", "glass", "keys"]] == [
+        "shelf",
+        "pot",
+        "box",
+        "battery",
+        "glass",
+        "key",
+    ]
+    assert norm("White Pots") == "white pot"
+    assert "unfinished brick building" in expand_query("brick hut")
+    assert "food item" in expand_query("chips")
+    mem = _mem()
+    for oid, label in [
+        ("wooden_bookshelf_1", "wooden bookshelf"),
+        ("white_flower_pot_1", "white flower pot"),
+        ("keyboard_1", "keyboard"),
+    ]:
+        mem.con.execute(
+            "INSERT INTO objects (object_id, session_id, label, aliases, last_seen) VALUES (?,?,?,?,?)",
+            (oid, "am", label, "[]", 1.0),
+        )
+    labels = lambda q: [h["label"] for h in mem.search_objects(q)]  # noqa: E731
+    assert labels("shelves") == ["wooden bookshelf"]
+    assert labels("white pots") == ["white flower pot"]
+    assert "keyboard" not in labels("board")  # "key" is too short a prefix for a compound match

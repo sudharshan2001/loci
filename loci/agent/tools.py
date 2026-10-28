@@ -38,6 +38,12 @@ SYNONYMS: dict[str, list[str]] = {
     "fruit stand": ["fruit stall", "fruit shop", "coconut stall", "coconut", "fruit"],
     "light": ["lights", "lamp", "tube light", "bulb", "ceiling light"],
     "laundry pile": ["laundry", "clothes", "washing"],
+    "hut": ["brick hut", "shed", "shack", "brick building", "unfinished brick building", "cabin"],
+    "chips": ["bag of chips", "snack", "snack packet", "packet", "food item", "crisps"],
+    "bed": ["headboard", "bedsheet", "mattress", "bed frame"],
+    "flower pot": ["pot", "planter", "plant pot", "potted plant"],
+    "speaker": ["bluetooth speaker", "soundbar", "loudspeaker"],
+    "garden": ["lawn", "balcony", "terrace", "yard"],
 }
 
 COLOURS = {
@@ -63,8 +69,26 @@ COLOURS = {
 }
 
 
+def singular(word: str) -> str:
+    """Crude English singular, enough for object names: shelves->shelf, pots->pot, boxes->box, batteries->battery."""
+    w = word.lower()
+    if w.endswith("ves") and len(w) > 4:
+        return w[:-3] + "f"
+    if w.endswith("ies") and len(w) > 4:
+        return w[:-3] + "y"
+    if w.endswith(("ches", "shes", "xes", "sses")):
+        return w[:-2]
+    if w.endswith("s") and not w.endswith("ss") and len(w) > 3:
+        return w[:-1]
+    return w
+
+
+def norm(phrase: str) -> str:
+    return " ".join(singular(w) for w in phrase.lower().split())
+
+
 def head_noun(phrase: str) -> str:
-    words = [w for w in phrase.lower().split() if w not in COLOURS]
+    words = [w for w in norm(phrase).split() if w not in COLOURS]
     return words[-1] if words else ""
 
 
@@ -103,11 +127,13 @@ def expand_query(q: str) -> set[str]:
     """The query plus synonyms. A single-word synonym only counts when the query is that one word
     (apart from colours/sizes), so "laptop stand" does not expand to street stalls."""
     q = q.lower().strip()
-    core = [w for w in q.split() if w not in COLOURS]
+    nq = norm(q)
+    core = [w for w in nq.split() if w not in COLOURS]
     terms = {q}
     for canon, syns in SYNONYMS.items():
         group = [canon, *syns]
-        if q in group or (len(core) == 1 and core[0] in group):
+        ngroup = {norm(g) for g in group}
+        if nq in ngroup or (len(core) == 1 and core[0] in ngroup):
             terms |= set(group)
     return terms
 
@@ -142,9 +168,9 @@ class Memory:
             # aliases rank a little below the main label
             # subset matching ("plant" in "potted plant") only for the asked words, not for synonyms such as
             # "computer", which would otherwise match "computer mouse"
-            ql = query.lower().strip()
+            ql = norm(query.strip())
             s_name = max(
-                max(fuzz.ratio(t, n.lower()), fuzz.token_set_ratio(t, n.lower()) if t == ql else 0)
+                max(fuzz.ratio(norm(t), norm(n)), fuzz.token_set_ratio(norm(t), norm(n)) if norm(t) == ql else 0)
                 - (0 if i == 0 else 5)
                 for t in terms
                 for i, n in enumerate(names)
@@ -152,8 +178,16 @@ class Memory:
             # "purple bucket" should find "laundry bucket": when the other words are only colours/sizes,
             # the same head noun is a match ("laptop stand" must not match "fruit stand")
             only_colours = len([w for w in query.lower().split() if w not in COLOURS]) == 1
-            if only_colours and any(head_noun(n) == head_noun(query) for n in names):
+            hq = head_noun(query)
+            if only_colours and any(head_noun(n) == hq for n in names):
                 s_name = max(s_name, 85)
+            # compound words: "shelf" finds "bookshelf"; "board" does not find "keyboard" (prefix "key" too short)
+            elif (
+                only_colours
+                and len(hq) >= 5
+                and any(w.endswith(hq) and len(w) - len(hq) >= 4 for n in names for w in norm(n).split())
+            ):
+                s_name = max(s_name, 82)
             s_text = max((fuzz.WRatio(query.lower(), t.lower()) for t in texts), default=0)
             score = max(s_name, s_text)
             if score >= 80:
