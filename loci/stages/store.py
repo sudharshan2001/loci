@@ -7,6 +7,8 @@ import logging
 import sqlite3
 from pathlib import Path
 
+import numpy as np
+
 from loci.session import Session
 
 log = logging.getLogger(__name__)
@@ -76,6 +78,30 @@ def connect(path: Path) -> sqlite3.Connection:
 
 def _j(x) -> str | None:
     return None if x is None else json.dumps(x, ensure_ascii=False)
+
+
+def register_to_reference(con: sqlite3.Connection, sid: str) -> dict:
+    """Align a home capture to the earliest home capture (the room frame), via objects that do not move."""
+    from loci.register import register
+
+    ref = con.execute(
+        "SELECT session_id FROM sessions WHERE scene='home' ORDER BY captured_at, created_at LIMIT 1"
+    ).fetchone()["session_id"]
+    if ref == sid:
+        res: dict = {"ok": True, "reference": sid, "transform": np.eye(4).tolist(), "n_inliers": 0}
+    else:
+
+        def objs(s: str) -> list[dict]:
+            rows = con.execute("SELECT label, cx, cy, cz FROM objects WHERE session_id=?", (s,)).fetchall()
+            return [{"label": r["label"], "centroid": [r["cx"], r["cy"], r["cz"]]} for r in rows]
+
+        res = {**register(objs(sid), objs(ref)), "reference": ref}
+    with con:
+        con.execute(
+            "UPDATE sessions SET to_room_frame=? WHERE session_id=?", (json.dumps(res) if res["ok"] else None, sid)
+        )
+    log.info("%s: room frame %s (%s)", sid, "ok" if res["ok"] else "not aligned", res.get("reason", res["reference"]))
+    return res
 
 
 def run(session: Session, db_path: Path) -> dict:
@@ -201,6 +227,8 @@ def run(session: Session, db_path: Path) -> dict:
             "INSERT INTO privacy VALUES (?,?,?,?)",
             [(sid, p, v["instances"], v["frames"]) for p, v in ledger["totals"].items()],
         )
+    if meta["scene"] == "home":
+        register_to_reference(con, sid)
     con.close()
     log.info(
         "%s: stored %d objects, %d observations, %d utterances",

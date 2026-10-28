@@ -107,3 +107,40 @@ def test_search_head_noun_typos_and_no_false_keys() -> None:
     assert labels("plants") == ["potted plant"]
     assert "signboard" in labels("Sudharshan Silks")
     assert "fruit stall" in labels("coconut stall")
+
+
+def test_last_known_links_across_aligned_captures_and_decays() -> None:
+    import numpy as np
+
+    mem = _mem()
+    # evening capture frame = morning frame shifted by +1 m in x
+    T = np.eye(4)
+    T[0, 3] = -1.0  # evening -> room (morning) frame
+    mem.con.execute(
+        "UPDATE sessions SET to_room_frame=? WHERE session_id='am'", (json.dumps({"transform": np.eye(4).tolist()}),)
+    )
+    mem.con.execute(
+        "UPDATE sessions SET to_room_frame=? WHERE session_id='pm'", (json.dumps({"transform": T.tolist()}),)
+    )
+    rows = [
+        ("am", "keys_1", "keys", [0.0, 0.0, 0.0], "on the desk"),
+        ("pm", "keys_1", "keys", [3.0, 0.0, 0.0], "on the bed"),  # room x = 2.0: moved 2 m
+        ("am", "desk_1", "desk", [0.5, 0.0, 0.0], None),
+        ("pm", "desk_1", "desk", [1.5, 0.0, 0.0], None),  # room x = 0.5: same desk
+    ]
+    for sid, oid, label, c, where in rows:
+        mem.con.execute(
+            "INSERT INTO objects (object_id, session_id, label, aliases, cx, cy, cz, last_seen, location_text,"
+            " best_obs) VALUES (?,?,?,?,?,?,?,?,?,?)",
+            (oid, sid, label, "[]", *c, 4.0, where, f"obs_{oid}"),
+        )
+    keys = mem.last_known("keys", now="2026-10-29T00:40:00")
+    assert len(keys) == 2 and not any(k["moved_between_captures"] for k in keys)  # 2 m apart: two places
+    desk = mem.last_known("desk", now="2026-10-29T00:40:00")
+    assert len(desk) == 1 and desk[0]["times_seen"] == 2 and desk[0]["still_there_probability"] == 1.0
+    latest_keys = max(keys, key=lambda k: k["latest"]["captured_at"])
+    assert (
+        latest_keys["latest"]["where"] == "on the bed" and latest_keys["still_there_probability"] == 0.5
+    )  # 6 h later, keys half-life 6 h
+    ch = mem.what_changed("am", "pm")
+    assert ("keys", 2.0) in [(m["label"], m["moved_m"]) for m in ch["moved"]]

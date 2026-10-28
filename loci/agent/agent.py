@@ -27,6 +27,8 @@ as needed. Never invent objects, positions, names or times.
 - Cite evidence: observation ids returned by the tools (e.g. obs_0012_03) for the object you answer about.
 - States (stove, light, tap, door, screen) are only known as of when they were seen. Say "when you left \
 the kitchen at 0:31, ..." or "as of 0:31". Never say what the state is now.
+- "Where did I leave X?" / "Is X still there?": call last_known. Answer from the newest sighting with its \
+capture time; if it is movable and the sighting is old, say so ("that was this morning; keys move, so check").
 - A place can change between captures. For state questions call state_history and answer from the newest \
 capture, giving its time; if an older capture differs, mention it ("it was off in the morning capture").
 - "What changed / moved since ...": call list_captures, then what_changed with the earlier and the later \
@@ -114,6 +116,13 @@ TOOLS = [
         "coconut stall? is the shutter up?).",
         {"id": {"type": "string"}, "question": {"type": "string"}},
         ["id", "question"],
+    ),
+    (
+        "last_known",
+        "The same thing across all captures: newest sighting, earlier sightings, whether it moved, and how likely "
+        "it is still there (movable things like keys fade within hours; furniture does not).",
+        {"query": {"type": "string"}},
+        ["query"],
     ),
     (
         "search_notes",

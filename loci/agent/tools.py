@@ -68,6 +68,21 @@ def head_noun(phrase: str) -> str:
     return words[-1] if words else ""
 
 
+# how long a sighting stays trustworthy, by how movable the thing is (hours; None = does not move)
+MOVABILITY: list[tuple[tuple[str, ...], float | None]] = [
+    (("keys", "key", "wallet", "phone", "charger", "glasses", "earphones", "remote", "passport", "watch"), 6.0),
+    (("bag", "backpack", "bottle", "cup", "mug", "book", "notebook", "laptop", "umbrella", "plastic bag"), 12.0),
+    (("laundry", "clothes", "jeans", "pillow", "blanket", "chair", "bucket", "box"), 24.0),
+]
+
+
+def half_life_h(label: str) -> float | None:
+    for words, h in MOVABILITY:
+        if any(w == label or w in label.split() for w in words):
+            return h
+    return None
+
+
 def fmt_time(t: float | None) -> str | None:
     if t is None:
         return None
@@ -257,6 +272,76 @@ class Memory:
             )
         return sorted(out, key=lambda x: x["captured_at"] or "", reverse=True)
 
+    def _room_pos(self, row: sqlite3.Row) -> np.ndarray | None:
+        """Object position in the shared room frame, if its capture is aligned to it."""
+        from loci.register import apply
+
+        r = self.con.execute("SELECT to_room_frame FROM sessions WHERE session_id=?", (row["session_id"],)).fetchone()
+        if not r or not r["to_room_frame"] or row["cx"] is None:
+            return None
+        return apply(json.loads(r["to_room_frame"])["transform"], [row["cx"], row["cy"], row["cz"]])
+
+    def last_known(self, query: str, now: str | None = None) -> list[dict[str, Any]]:
+        """The same thing across captures (linked in the room frame): sightings over time, whether it moved,
+        and how likely it is still there given how movable it is. Newest sighting first."""
+        from datetime import datetime
+
+        hits = self.search_objects(query, limit=30)
+        things: list[dict[str, Any]] = []
+        for h in hits:
+            row = self._obj(h["id"])
+            pos = self._room_pos(row)
+            captured = self._captured(row["session_id"]) or ""
+            sight = {
+                "id": h["id"],
+                "capture": row["session_id"],
+                "captured_at": captured,
+                "seen_at": fmt_time(row["last_seen"]),
+                "where": row["location_text"],
+                "evidence": [row["best_obs"]],
+                "room_pos": None if pos is None else pos.round(2).tolist(),
+            }
+            # link to an existing thing with the same label within 0.6 m in the room frame
+            match = None
+            if pos is not None:
+                for t in things:
+                    if t["label"] == row["label"] and t["_pos"] is not None and np.linalg.norm(t["_pos"] - pos) < 0.6:
+                        match = t
+                        break
+            if match is None:
+                match = {"label": row["label"], "_pos": pos, "sightings": []}
+                things.append(match)
+            match["sightings"].append(sight)
+        ref = datetime.fromisoformat(now) if now else datetime.now().astimezone()
+        out = []
+        for t in things:
+            sights = sorted(t["sightings"], key=lambda x: x["captured_at"], reverse=True)
+            latest = sights[0]
+            hl = half_life_h(t["label"])
+            p_there = None
+            if latest["captured_at"]:
+                age_h = max(0.0, (ref - datetime.fromisoformat(latest["captured_at"])).total_seconds() / 3600)
+                p_there = 1.0 if hl is None else round(0.5 ** (age_h / hl), 2)
+            moved = [
+                s
+                for s in sights[1:]
+                if s["room_pos"]
+                and latest["room_pos"]
+                and np.linalg.norm(np.subtract(s["room_pos"], latest["room_pos"])) > 0.3
+            ]
+            out.append(
+                {
+                    "label": t["label"],
+                    "latest": latest,
+                    "earlier": sights[1:],
+                    "times_seen": len(sights),
+                    "movable": hl is not None,
+                    "still_there_probability": p_there,
+                    "moved_between_captures": bool(moved),
+                }
+            )
+        return out
+
     def list_captures(self) -> list[dict[str, Any]]:
         rows = self.con.execute("SELECT session_id, scene, captured_at FROM sessions ORDER BY captured_at").fetchall()
         return [dict(r) for r in rows]
@@ -294,7 +379,21 @@ class Memory:
             if len(ra) > len(rb):
                 res["removed"] += [{"id": uid(r), "label": key, "was": r["location_text"]} for r in ra[len(rb) :]]
             for x, y in zip(ra, rb, strict=False):
-                if x["location_text"] and y["location_text"] and x["location_text"] != y["location_text"]:
+                px, py = self._room_pos(x), self._room_pos(y)
+                if px is not None and py is not None:  # both captures aligned: compare metric positions
+                    d = float(np.linalg.norm(px - py))
+                    if d > 0.3:
+                        res["moved"].append(
+                            {
+                                "id": uid(y),
+                                "label": key,
+                                "moved_m": round(d, 2),
+                                "was": x["location_text"],
+                                "now": y["location_text"],
+                                "evidence": [y["best_obs"]],
+                            }
+                        )
+                elif x["location_text"] and y["location_text"] and x["location_text"] != y["location_text"]:
                     res["moved"].append(
                         {
                             "id": uid(y),

@@ -155,13 +155,40 @@ def location_text(o: dict, rels: list[dict], by_id: dict) -> str:
     return ", ".join(parts) or "seen in this capture"
 
 
-def walk_metrics(objects: list[dict], poses: np.ndarray, times: list[float], up: np.ndarray) -> None:
+def anchor_point(
+    o: dict, obs_by_id: dict | None, poses: np.ndarray, row_of: dict | None, max_depth: float
+) -> np.ndarray:
+    """Where to place an object along the walk.
+
+    Its 3D centre comes from depth, which is noisy far away (it can land past the end of the walk). The
+    direction from the camera at the best sighting is reliable, so use that camera plus the direction,
+    with the distance capped at max_depth.
+    """
+    c = np.asarray(o["centroid"], float)
+    if not obs_by_id or not row_of or o.get("best_obs") not in obs_by_id:
+        return c
+    ob = obs_by_id[o["best_obs"]]
+    cam = poses[row_of[ob["keyframe"]]][:3, 3]
+    v = np.asarray(ob["centroid"], float) - cam
+    d = float(np.linalg.norm(v))
+    return cam + v / d * min(d, max_depth) if d > 1e-6 else c
+
+
+def walk_metrics(
+    objects: list[dict],
+    poses: np.ndarray,
+    times: list[float],
+    up: np.ndarray,
+    obs_by_id: dict | None = None,
+    row_of: dict | None = None,
+    max_depth: float = 15.0,
+) -> None:
     """Street: distance along the walk, side of road, time passed (closest camera, horizontal distance)."""
     cams = poses[:, :3, 3]
     seg = np.r_[0, np.cumsum(np.linalg.norm(np.diff(cams, axis=0), axis=1))]
     flat = cams - np.outer(cams @ up, up)
     for o in objects:
-        c = np.asarray(o["centroid"])
+        c = anchor_point(o, obs_by_id, poses, row_of, max_depth)
         cf = c - (c @ up) * up
         i = int(np.argmin(np.linalg.norm(flat - cf, axis=1)))
         j0, j1 = max(0, i - 2), min(len(cams) - 1, i + 2)
@@ -186,7 +213,7 @@ def run(session: Session) -> dict[str, Any]:
     rels: list[dict] = []
     if session.scene() == "street":
         times = [k["t"] for k in session.keyframes()]
-        walk_metrics(objects, g["poses"], times, up)
+        walk_metrics(objects, g["poses"], times, up, obs_by_id, row_of)
         for o in objects:
             o["location_text"] = f"on your {o['side']}, about {o['distance_along_walk_m']:.0f} m into the walk"
     else:

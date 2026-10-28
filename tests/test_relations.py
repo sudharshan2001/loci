@@ -61,3 +61,14 @@ def test_walk_metrics_side_and_distance() -> None:
     walk_metrics([shop_r, shop_l], poses, [float(i) for i in range(11)], UP)
     assert shop_r["side"] == "right" and shop_r["distance_along_walk_m"] == 5.0 and shop_r["passed_at"] == 5.0
     assert shop_l["side"] == "left" and shop_l["distance_along_walk_m"] == 8.0
+
+
+def test_far_object_is_placed_from_its_sighting() -> None:
+    # walk 10 m along +z; a sign seen at frame 3 whose depth put it 80 m away (bad depth)
+    poses = np.stack([np.eye(4) for _ in range(11)])
+    poses[:, 2, 3] = np.arange(11)
+    sign = _obj("sign_1", "shop sign", [4, -3, 79], [5, -2, 81])
+    sign["best_obs"] = "obs_3"
+    obs = {"obs_3": {"keyframe": 3, "centroid": [4.5, -2.5, 80.0]}}
+    walk_metrics([sign], poses, [float(i) for i in range(11)], UP, obs, {k: k for k in range(11)}, max_depth=15)
+    assert sign["side"] == "right" and sign["distance_along_walk_m"] <= 10 and sign["distance_along_walk_m"] >= 3
