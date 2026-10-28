@@ -1,0 +1,236 @@
+[
+  {
+    "q": "What's on my desk?",
+    "expect": [
+      "computer monitor",
+      "laptop",
+      "keyboard",
+      "desk"
+    ],
+    "clip": "home.mp4",
+    "answer": "I'm not sure. The last confirmed sighting of the desk was in the hallway, at 0:18.",
+    "ok": true,
+    "why": "labels ['desk']",
+    "verified": false,
+    "attempts": 2,
+    "latency_s": 54.7
+  },
+  {
+    "q": "Where is my laptop?",
+    "expect": [
+      "laptop"
+    ],
+    "clip": "home.mp4",
+    "answer": "Your laptop was last seen on the desk in the bedroom. As of the home capture at 0:06 it is on the desk in the bedroom, ~0.65 m from the desk and near the bedroom door.",
+    "ok": true,
+    "why": "labels ['laptop', 'laptop', 'silver laptop']",
+    "verified": true,
+    "attempts": 1,
+    "latency_s": 21.7
+  },
+  {
+    "q": "Where's the keyboard?",
+    "expect": [
+      "keyboard"
+    ],
+    "clip": "home.mp4",
+    "answer": "I last saw a keyboard on the desk in the office, in the most recent home capture, last seen at 0:06.",
+    "ok": true,
+    "why": "labels ['keyboard']",
+    "verified": true,
+    "attempts": 1,
+    "latency_s": 19.3
+  },
+  {
+    "q": "Is the laundry done?",
+    "expect": [
+      "laundry pile",
+      "laundry bucket",
+      "clothes"
+    ],
+    "clip": "home.mp4",
+    "answer": "I'm not sure. The last confirmed sighting of the laundry bucket was left of the desk, in the hallway, at 0:18.",
+    "ok": true,
+    "why": "labels ['laundry bucket']",
+    "verified": false,
+    "attempts": 2,
+    "latency_s": 40.9
+  },
+  {
+    "q": "Where's the purple bucket?",
+    "expect": [
+      "bucket",
+      "laundry bucket"
+    ],
+    "clip": "home.mp4",
+    "answer": "I haven't seen a purple bucket in any capture.",
+    "ok": false,
+    "why": "refused",
+    "verified": true,
+    "attempts": 1,
+    "latency_s": 24.7
+  },
+  {
+    "q": "Where did I leave my backpack?",
+    "expect": [
+      "backpack",
+      "bag"
+    ],
+    "clip": "home.mp4",
+    "answer": "You left your backpack right of the desk in the hallway; last seen at 0:18.",
+    "ok": true,
+    "why": "labels ['backpack', 'backpack', 'backpack', 'backpack', 'backpack', 'backpack']",
+    "verified": true,
+    "attempts": 1,
+    "latency_s": 18.7
+  },
+  {
+    "q": "Where's the laptop stand?",
+    "expect": [
+      "laptop stand",
+      "stand"
+    ],
+    "clip": "home.mp4",
+    "answer": "I haven't seen a laptop stand in any capture.",
+    "ok": false,
+    "why": "refused",
+    "verified": true,
+    "attempts": 1,
+    "latency_s": 24.2
+  },
+  {
+    "q": "Is the stove on?",
+    "note": "no lit stove in this capture; a correct answer says no state is recorded or names the stove with as-of time",
+    "clip": "home.mp4",
+    "answer": "Yes, as of 0:15 the gas stove was on with the right burner lit and nothing on it.",
+    "ok": true,
+    "why": "no expectation (manual check)",
+    "verified": true,
+    "attempts": 1,
+    "latency_s": 12.0
+  },
+  {
+    "q": "Are the lights on?",
+    "note": "answer must be as-of the capture time or say no state was recorded",
+    "clip": "home.mp4",
+    "answer": "I haven't seen a light in any capture.",
+    "ok": false,
+    "why": "refused",
+    "verified": true,
+    "attempts": 1,
+    "latency_s": 11.8
+  },
+  {
+    "q": "How far is the desk from the door?",
+    "note": "metres, sanity range 1-5 m",
+    "clip": "home.mp4",
+    "answer": "The desk in the office is about 0.9 m straight-line from the office door, as seen at 0:06.",
+    "ok": true,
+    "why": "no expectation (manual check)",
+    "verified": true,
+    "attempts": 2,
+    "latency_s": 40.7
+  },
+  {
+    "q": "Where's my passport?",
+    "refuse": true,
+    "clip": "home.mp4",
+    "answer": "I haven't seen a passport in any capture.",
+    "ok": true,
+    "why": "refused",
+    "verified": true,
+    "attempts": 1,
+    "latency_s": 16.9
+  },
+  {
+    "q": "Where are my car keys?",
+    "refuse": true,
+    "clip": "home.mp4",
+    "answer": "I haven't seen a car keys in any capture.",
+    "ok": true,
+    "why": "refused",
+    "verified": true,
+    "attempts": 1,
+    "latency_s": 20.5
+  },
+  {
+    "q": "Where was the coconut stall?",
+    "expect": [
+      "coconut stall",
+      "coconut"
+    ],
+    "clip": "street.mp4",
+    "answer": "I haven't seen a coconut stall in any capture.",
+    "ok": false,
+    "why": "refused",
+    "verified": true,
+    "attempts": 1,
+    "latency_s": 24.1
+  },
+  {
+    "q": "What shops did I pass?",
+    "expect": [
+      "shop sign",
+      "signboard",
+      "shop front",
+      "stall"
+    ],
+    "clip": "street.mp4",
+    "answer": "I'm not sure. The last confirmed sighting of the signboard was on your right, about 62 m into the walk, at 0:22.",
+    "ok": true,
+    "why": "labels ['signboard']",
+    "verified": false,
+    "attempts": 2,
+    "latency_s": 59.4
+  },
+  {
+    "q": "Was the coconut stall open?",
+    "expect": [
+      "coconut stall"
+    ],
+    "clip": "street.mp4",
+    "answer": "I haven't seen a coconut stall in any capture.",
+    "ok": false,
+    "why": "refused",
+    "verified": true,
+    "attempts": 1,
+    "latency_s": 19.3
+  },
+  {
+    "q": "How do I get from the coconut stall to the next shop?",
+    "note": "uses route; distance and direction along the walk",
+    "clip": "street.mp4",
+    "answer": "I haven't seen a coconut stall in any capture.",
+    "ok": false,
+    "why": "refused",
+    "verified": true,
+    "attempts": 1,
+    "latency_s": 28.6
+  },
+  {
+    "q": "Which side of the road were the shops on?",
+    "expect": [
+      "shop front",
+      "shop sign",
+      "stall"
+    ],
+    "clip": "street.mp4",
+    "answer": "I'm not sure. The last confirmed sighting of the signboard was on your right, about 62 m into the walk, at 0:22.",
+    "ok": false,
+    "why": "labels ['signboard']",
+    "verified": false,
+    "attempts": 2,
+    "latency_s": 46.2
+  },
+  {
+    "q": "Where's the nearest ATM?",
+    "refuse": true,
+    "clip": "street.mp4",
+    "answer": "I haven't seen an ATM in any capture.",
+    "ok": true,
+    "why": "refused",
+    "verified": true,
+    "attempts": 1,
+    "latency_s": 9.0
+  }
+]

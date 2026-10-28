@@ -42,6 +42,8 @@ def score(item: dict, ans: dict, mem: Memory) -> tuple[bool, str]:
         return oid is None, "refused" if oid is None else f"answered {label_of(mem, oid)}"
     if oid is None:
         return False, "refused"
+    if not ans.get("verified"):
+        return False, "not sure (unverified)"
     labels = [lab for lab in [label_of(mem, oid), *(label_of(mem, u) for u in ans.get("objects") or [])] if lab]
     if item.get("state"):
         st = mem.get_state(oid).get("state") or {}

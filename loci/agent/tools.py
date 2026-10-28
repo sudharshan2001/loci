@@ -23,7 +23,49 @@ SYNONYMS: dict[str, list[str]] = {
     "keyboard": ["external keyboard"],
     "computer mouse": ["mouse"],
     "tv": ["television", "tv screen"],
+    "street stall": [
+        "stall",
+        "stand",
+        "kiosk",
+        "fruit stand",
+        "fruit stall",
+        "vegetable stall",
+        "coconut stall",
+        "coconut",
+        "shop front",
+        "cart",
+    ],
+    "fruit stand": ["fruit stall", "fruit shop", "coconut stall", "coconut", "fruit"],
+    "light": ["lights", "lamp", "tube light", "bulb", "ceiling light"],
+    "laundry pile": ["laundry", "clothes", "washing"],
 }
+
+COLOURS = {
+    "red",
+    "blue",
+    "green",
+    "yellow",
+    "purple",
+    "pink",
+    "black",
+    "white",
+    "grey",
+    "gray",
+    "brown",
+    "orange",
+    "silver",
+    "golden",
+    "small",
+    "big",
+    "large",
+    "my",
+    "the",
+}
+
+
+def head_noun(phrase: str) -> str:
+    words = [w for w in phrase.lower().split() if w not in COLOURS]
+    return words[-1] if words else ""
 
 
 def fmt_time(t: float | None) -> str | None:
@@ -43,11 +85,15 @@ def split_uid(u: str) -> tuple[str, str]:
 
 
 def expand_query(q: str) -> set[str]:
+    """The query plus synonyms. A single-word synonym only counts when the query is that one word
+    (apart from colours/sizes), so "laptop stand" does not expand to street stalls."""
     q = q.lower().strip()
+    core = [w for w in q.split() if w not in COLOURS]
     terms = {q}
     for canon, syns in SYNONYMS.items():
-        if q == canon or q in syns or any(s in q.split() for s in [canon, *syns] if " " not in s):
-            terms |= {canon, *syns}
+        group = [canon, *syns]
+        if q in group or (len(core) == 1 and core[0] in group):
+            terms |= set(group)
     return terms
 
 
@@ -77,7 +123,22 @@ class Memory:
         for r in rows:
             names = [r["label"], *json.loads(r["aliases"] or "[]")]
             texts = [t for t in (r["text"], r["text_english"]) if t]
-            s_name = max(fuzz.WRatio(t, n.lower()) for t in terms for n in names)
+            # whole-word similarity: typos and "plant" vs "potted plant" match, "keys" vs "keyboard" does not;
+            # aliases rank a little below the main label
+            # subset matching ("plant" in "potted plant") only for the asked words, not for synonyms such as
+            # "computer", which would otherwise match "computer mouse"
+            ql = query.lower().strip()
+            s_name = max(
+                max(fuzz.ratio(t, n.lower()), fuzz.token_set_ratio(t, n.lower()) if t == ql else 0)
+                - (0 if i == 0 else 5)
+                for t in terms
+                for i, n in enumerate(names)
+            )
+            # "purple bucket" should find "laundry bucket": when the other words are only colours/sizes,
+            # the same head noun is a match ("laptop stand" must not match "fruit stand")
+            only_colours = len([w for w in query.lower().split() if w not in COLOURS]) == 1
+            if only_colours and any(head_noun(n) == head_noun(query) for n in names):
+                s_name = max(s_name, 85)
             s_text = max((fuzz.WRatio(query.lower(), t.lower()) for t in texts), default=0)
             score = max(s_name, s_text)
             if score >= 80:
@@ -283,7 +344,11 @@ class Memory:
         }
 
     def places_passed(self, session_id: str | None = None) -> list[dict[str, Any]]:
-        q = "SELECT * FROM objects WHERE text IS NOT NULL AND distance_along_walk_m IS NOT NULL"
+        # read signs, plus stalls and shop fronts even when no sign text could be read
+        q = (
+            "SELECT * FROM objects WHERE distance_along_walk_m IS NOT NULL AND ((text IS NOT NULL AND text != '') "
+            "OR label LIKE '%stall%' OR label LIKE '%stand%' OR label LIKE '%shop front%' OR label LIKE '%kiosk%')"
+        )
         args: tuple = ()
         if session_id:
             q += " AND session_id=?"
@@ -292,8 +357,9 @@ class Memory:
         return [
             {
                 "id": uid(r),
-                "name": r["text"],
+                "name": r["text"] or r["label"],
                 "name_english": r["text_english"],
+                "open": json.loads(r["state"]).get("shop_open") if r["state"] else None,
                 "distance_along_walk_m": r["distance_along_walk_m"],
                 "side": r["side"],
                 "passed_at": fmt_time(r["passed_at"]),

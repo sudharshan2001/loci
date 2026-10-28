@@ -84,3 +84,26 @@ def test_what_changed_states_moves_added_removed() -> None:
     assert [(m["label"], m["was"], m["now"]) for m in ch["moved"]] == [("keys", "on the desk", "on the bed")]
     assert [x["label"] for x in ch["added"]] == ["phone"]
     assert [x["label"] for x in ch["removed"]] == ["laundry pile"]
+
+
+def test_search_head_noun_typos_and_no_false_keys() -> None:
+    mem = _mem()
+    for oid, label in [
+        ("laundry_bucket_1", "laundry bucket"),
+        ("keyboard_1", "keyboard"),
+        ("potted_plant_1", "potted plant"),
+    ]:
+        mem.con.execute(
+            "INSERT INTO objects (object_id, session_id, label, aliases, last_seen) VALUES (?,?,?,?,?)",
+            (oid, "am", label, "[]", 1.0),
+        )
+    mem.con.execute(
+        "INSERT INTO objects (object_id, session_id, label, aliases, text, last_seen) VALUES (?,?,?,?,?,?)",
+        ("signboard_1", "walk", "signboard", "[]", "Sudarshan Silks", 1.0),
+    )
+    labels = lambda q: [h["label"] for h in mem.search_objects(q)]  # noqa: E731
+    assert labels("purple bucket") == ["laundry bucket"]
+    assert labels("keys") == []  # keyboard keys are not keys
+    assert labels("plants") == ["potted plant"]
+    assert "signboard" in labels("Sudharshan Silks")
+    assert "fruit stall" in labels("coconut stall")
