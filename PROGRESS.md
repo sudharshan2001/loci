@@ -139,3 +139,30 @@ Known issues (all caused by the footage):
   compression ratio (this also dropped the one home utterance, which was not an object note).
 - Recommended re-capture: 1080p landscape; home 60–90 s with slow turns and 2–3 s holds on stove, desk,
   laundry, lights; a spoken note near an object; street 1–2 min, turn towards each sign for 1–2 s.
+
+## Oct 28 evening – beyond the spec, and multilingual
+
+New (all tested; see CLAUDE.md "Beyond the spec"):
+- Capture coach (`loci coach`): home 3D "broken" (9% impossible camera jumps, max 4.2 m/s), street "broken"
+  (29%, 8.4 m/s); the slow sample desk clip scores "good" (0%). Tips name the time spans to re-walk.
+- Motion-aware keyframes (spacing follows view motion). On the home video the view moved 19 screen-widths in
+  18 s, more than 80 keyframes can cover: the coach says to take about 30 s for the same walk.
+- Room frame registration from static objects (RANSAC, yaw + scale), object permanence (`last_known`) with
+  movability decay, metric `what_changed`. Unit-tested with synthetic morning/evening captures.
+- Robot floor grid + A* (`/navigate`), waypoints in `robot_goal`; "see what you saw" photo frustum and
+  "View from where you stood"; floor grid in the viewer. Checked in headless Chromium.
+- Forget (`loci forget <id> --yes`): on a copy of the desk session, the notebook's pixels were blurred in all
+  15 frames (Laplacian detail 624 -> 1), 10,163 points removed, rows and masks deleted, ledger updated.
+- Agent: low reasoning strength first, medium on retry; answers in the question's language; `look` confirms
+  related kinds; demo answer cache (`loci warm`).
+
+Eval (18 English questions, strict): 78% (14/18), median 22.2 s, refusals 3/3.
+Kannada and Tamil (all verified):
+- "ಸ್ಟವ್ ಆನ್ ಆಗಿತ್ತಾ?" -> "ಸ್ಟವ್ 0:15ರಲ್ಲಿ ಆನ್ ಆಗಿತ್ತು—ಬಲ ಬರ್ನರ್ ಬೆಳಗಿದ್ದು…" (8 s)
+- "ಶ್ರೀ ಲಕ್ಷ್ಮಿ ಅಂಗಡಿ ಎಲ್ಲಿತ್ತು?" -> on the right, about 62 m into the walk, at 0:22 (53 s)
+- "அடுப்பு எரிந்துகொண்டிருந்ததா?" -> yes, right burner, seen at 0:15 "(only known as of then)" (11 s)
+- "தேங்காய் கடை எங்கே இருந்தது?" -> the coconut cart on the left, about 12 m in, at 0:02 (74 s)
+- "என் பை எங்கே?" -> last seen in the hallway at 0:18, "it is movable" (21 s)
+- "நான் எந்த கடைகளை கடந்தேன்?" -> ordered list with distance, side and open/closed (22 s)
+- Coconut cart now has an open/closed state (open, conf 0.70); the verifier accepts state times within 2 s.
+The eval file now has 23 questions (5 Kannada/Tamil).

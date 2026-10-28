@@ -29,6 +29,12 @@
       refuse: true
     - q: "Where are my car keys?"
       refuse: true
+    - q: "ಸ್ಟವ್ ಆನ್ ಆಗಿತ್ತಾ?"  # Kannada: was the stove on?
+      expect: [gas stove]
+    - q: "அடுப்பு எரிந்துகொண்டிருந்ததா?"  # Tamil: was the stove burning?
+      expect: [gas stove]
+    - q: "என் பை எங்கே?"  # Tamil: where is my bag?
+      expect: [backpack, bag, plastic bag]
 
 - clip: street.mp4
   scene: street
@@ -45,3 +51,7 @@
       expect: [shop front, shop sign, stall]
     - q: "Where's the nearest ATM?"
       refuse: true
+    - q: "ಶ್ರೀ ಲಕ್ಷ್ಮಿ ಅಂಗಡಿ ಎಲ್ಲಿತ್ತು?"  # Kannada: where was the Sri Lakshmi shop?
+      expect: [signboard, shop sign]
+    - q: "தேங்காய் கடை எங்கே இருந்தது?"  # Tamil: where was the coconut shop?
+      expect: [fruit stand, coconut stall, street stall]

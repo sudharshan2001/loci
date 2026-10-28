@@ -94,7 +94,12 @@ def verify(ans: dict[str, Any], mem: Memory) -> list[str]:
             problems.append(f"answer says on/lit/open but stored state is {state}")
         seen = fmt_time(row["state_seen_at"])
         claims_state = said_neg or said_pos
-        if claims_state and seen and seen not in text and ans.get("seen_at") != seen:
+        # any time mentioned within 2 s of when the state was seen counts (0:02 vs 0:00 is the same moment)
+        said = [
+            int(m) * 60 + int(sec) for m, sec in re.findall(r"\b(\d+):(\d{2})\b", f"{text} {ans.get('seen_at') or ''}")
+        ]
+        close = any(abs(t - row["state_seen_at"]) <= 2.0 for t in said)
+        if claims_state and seen and not close:
             problems.append(f"state answer must say when it was seen ({seen})")
         if re.search(r"\b(right now|currently|is still|at the moment)\b", text):
             problems.append("state answers must be 'as of' when seen, not about now")

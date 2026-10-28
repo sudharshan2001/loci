@@ -135,3 +135,10 @@ def test_street_sides_are_not_home_relations(mem: Memory) -> None:
         "evidence": ["obs_shop_sign_1"],
     }
     assert verify(ans, mem) == []
+
+
+def test_state_time_within_two_seconds_is_fine(mem: Memory) -> None:
+    ans = {"answer": "As of 0:32 the burner was lit.", "object_id": "home:gas_stove_1", "evidence": ["obs_gas_stove_1"]}
+    assert verify(ans, mem) == []
+    far = {**ans, "answer": "As of 0:40 the burner was lit."}
+    assert any("when it was seen" in p for p in verify(far, mem))

@@ -33,7 +33,7 @@ STATE_QS: list[tuple[tuple[str, ...], str]] = [
         '{"laundry_pending": true/false}.',
     ),
     (
-        ("shop front", "stall", "shop entrance", "storefront", "kiosk"),
+        ("shop front", "stall", "stand", "cart", "shop entrance", "storefront", "kiosk"),
         "Is this shop or stall open for business (shutter up, goods on display, lights on)? Return JSON "
         '{"shop_open": true/false}.',
     ),
@@ -59,11 +59,16 @@ STATE_QS: list[tuple[tuple[str, ...], str]] = [
 ]
 
 
-def question_for(label: str) -> tuple[str, str] | None:
-    """('sign' | 'state', question) for labels that need a visual attribute check."""
+def question_for(label: str, scene: str = "home") -> tuple[str, str] | None:
+    """('sign' | 'state', question) for labels that need a visual attribute check.
+
+    Open/closed applies to shops and stalls on the street only (a "monitor stand" at home is not a shop).
+    """
     if label in SIGN_LABELS or label.endswith(" sign") or label.endswith("signboard"):
         return "sign", SIGN_Q
     for keys, q in STATE_QS:
+        if "shop_open" in q and scene != "street":
+            continue
         if any(k in label for k in keys):
             return "state", q
     return None
@@ -97,7 +102,7 @@ def pending(session: Session, per_object: int = 2) -> int:
     obs = {o["obs_id"]: o for o in session.read(session.observations)}
     n = 0
     for o in session.read(session.objects):
-        q = question_for(o["label"])
+        q = question_for(o["label"], session.scene())
         if q:
             cands = sorted((obs[i] for i in o["obs_ids"]), key=lambda m: -m["quality"])[:per_object]
             n += sum(f"{c['obs_id']}|{q[0]}" not in cache for c in cands)
@@ -112,7 +117,7 @@ def run(session: Session, checker: VisionChecker | None, per_object: int = 2) ->
     cache: dict[str, dict] = session.read(cache_path) if cache_path.exists() else {}
     results = []
     for o in objects:
-        q = question_for(o["label"])
+        q = question_for(o["label"], session.scene())
         if q is None:
             continue
         kind, question = q

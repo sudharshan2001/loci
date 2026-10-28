@@ -16,3 +16,9 @@ def test_crop_clamps_to_image() -> None:
     img = np.zeros((100, 200, 3), np.uint8)
     assert crop(img, [0, 0, 50, 50], 1.0).shape == (100, 100, 3)
     assert crop(img, [150, 50, 200, 100], 0.0).shape == (50, 50, 3)
+
+
+def test_shop_open_only_on_the_street() -> None:
+    assert "shop_open" in question_for("fruit stand", "street")[1]
+    assert "shop_open" in question_for("coconut cart", "street")[1]
+    assert question_for("monitor stand", "home") is None or "shop_open" not in question_for("monitor stand", "home")[1]
