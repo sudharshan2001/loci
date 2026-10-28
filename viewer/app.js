@@ -125,6 +125,14 @@ async function loadSession(sid) {
   layers.add(me);
   addTag(here, "you are here", "");
 
+  // home: a faint floor grid, so a robot's route has something to stand on
+  if (current.floor_y != null) {
+    const r = geo.boundingSphere.radius;
+    const grid = new THREE.GridHelper(Math.ceil(r * 2.5), Math.ceil(r * 2.5) * 4, 0x2a3442, 0x1a2029);
+    grid.position.set(geo.boundingSphere.center.x, -current.floor_y, geo.boundingSphere.center.z);
+    layers.add(grid);
+  }
+
   // street: a marker and name for every read shop sign
   if (current.scene === "street") {
     for (const o of current.objects.filter((o) => o.text)) {
@@ -158,9 +166,13 @@ async function loadAlerts(sid) {
     const li = document.createElement("li");
     li.innerHTML = `${a.text}<small>${a.kind} · seen at ${fmt(a.seen_at)}</small>`;
     // an alert is shown like an answer: highlight the object, show its evidence
-    li.onclick = () => {
+    li.onclick = async () => {
       const ans = { question: "Leaving check", answer: a.text, object_id: a.object_id, evidence: a.evidence,
                     session: sid, seen_at: fmt(a.seen_at), verified: true, confidence: 1, used_cloud: false };
+      if (current.scene === "home") {
+        const nav = await api(`/navigate/${sid}/${a.object_id.split(":").pop()}`).catch(() => null);
+        if (nav && nav.ok) ans.robot_goal = { waypoints_m: nav.waypoints_m, path_length_m: nav.length_m };
+      }
       showAnswer(ans);
       highlight(ans);
     };
@@ -213,8 +225,65 @@ function highlight(ans) {
   line.computeLineDistances();
   hit.add(line);
   addTag(target, o.text || o.label, "hit");
-  const size = box.getSize(new THREE.Vector3()).length();
-  flyTo(target, Math.max(current.scene === "street" ? 6 : 1.2, size * 3));
+  const route = drawRobotPath(ans.robot_goal);
+  drawPhoto(ans);
+  // frame the object and, when there is one, the robot's route on the floor
+  const frame = box.clone();
+  if (route) route.forEach((p) => frame.expandByPoint(p));
+  const size = frame.getSize(new THREE.Vector3()).length();
+  flyTo(frame.getCenter(new THREE.Vector3()), Math.max(current.scene === "street" ? 6 : 1.2, size * (route ? 1.6 : 3)));
+}
+
+// a ground robot's route over the floor grid, slightly above the floor so it stays visible
+function drawRobotPath(goal) {
+  if (!goal || !goal.waypoints_m || goal.waypoints_m.length < 2) return null;
+  const pts = goal.waypoints_m.map((w) => cv([w[0], w[1] - 0.02, w[2]]));
+  hit.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+                         new THREE.LineBasicMaterial({ color: 0x4fd18b, linewidth: 2 })));
+  const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.02, 24),
+                               new THREE.MeshBasicMaterial({ color: 0x4fd18b, transparent: true, opacity: 0.7 }));
+  stand.position.copy(pts[pts.length - 1]);
+  hit.add(stand);
+  addTag(pts[pts.length - 1], `robot stops here · ${goal.path_length_m} m`, "hit");
+  return pts;
+}
+
+// "see what you saw": the evidence photo, hung where the camera was when it was taken
+let photoView = null;
+function drawPhoto(ans) {
+  photoView = null;
+  const ev = (ans.evidence || [])[0];
+  if (!ev || !current.cameras) return;
+  const k = parseInt(ev.slice(4, 8), 10);
+  const cam = current.cameras.find((c) => c.keyframe === k);
+  const pos = current.camera_path[current.cameras.indexOf(cam)];
+  if (!cam || !pos) return;
+  // camera axes in three.js coordinates (flip y and z of the OpenCV frame)
+  const R = cam.R, col = (j) => new THREE.Vector3(R[0][j], -R[1][j], -R[2][j]);
+  const right = col(0), down = col(1), fwd = col(2);
+  const origin = cv(pos);
+  const d = current.scene === "street" ? 1.2 : 0.25;
+  const hh = d * Math.tan((cam.fov_y_deg * Math.PI) / 360), hw = hh * cam.aspect;
+  const centre = origin.clone().add(fwd.clone().multiplyScalar(d));
+  const corner = (sx, sy) => centre.clone().add(right.clone().multiplyScalar(sx * hw)).add(down.clone().multiplyScalar(sy * hh));
+  const c = [corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)];
+  const lines = [origin, c[0], origin, c[1], origin, c[2], origin, c[3], c[0], c[1], c[1], c[2], c[2], c[3], c[3], c[0]];
+  hit.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(lines),
+                                 new THREE.LineBasicMaterial({ color: 0xe6ebf2, transparent: true, opacity: 0.7 })));
+  const tex = new THREE.TextureLoader().load(`/evidence/${ans.session}/${ev}.jpg?full=1`);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const plane = new THREE.Mesh(new THREE.PlaneGeometry(2 * hw, 2 * hh),
+                               new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide, transparent: true, opacity: 0.92 }));
+  plane.position.copy(centre);
+  plane.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(right, down.clone().negate(), fwd.clone().negate()));
+  hit.add(plane);
+  photoView = { pos: origin.clone().sub(fwd.clone().multiplyScalar(d * 0.6)), target: centre };
+}
+
+function viewFromPhoto() {
+  if (!photoView) return;
+  fly = { t0: performance.now(), ms: 1600, fromPos: camera.position.clone(), fromTgt: controls.target.clone(),
+          toPos: photoView.pos, toTgt: photoView.target };
 }
 
 function showAnswer(ans) {
@@ -268,6 +337,7 @@ $("askform").onsubmit = (e) => {
   submit(api("/ask", { method: "POST", headers: { "Content-Type": "application/json" },
                        body: JSON.stringify({ question: q }) }));
 };
+$("seeit").onclick = viewFromPhoto;
 $("copy").onclick = (e) => { e.preventDefault(); navigator.clipboard.writeText($("goaljson").textContent); };
 
 // voice questions: record, then POST to /ask_audio
@@ -300,7 +370,9 @@ loadSessions()
   .then(() => {
     const q = params.get("q");
     if (q) { $("q").value = q; $("askform").requestSubmit(); }
+    if (params.get("view") === "photo") setTimeout(viewFromPhoto, 1600);
     const n = params.get("alert");
-    if (n !== null) $("alertlist").children[Number(n)]?.click();
+    const li = n !== null ? $("alertlist").children[Number(n)] : null;
+    if (li) li.click();
   })
   .catch((e) => { $("legend").textContent = e.message; });

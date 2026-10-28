@@ -127,12 +127,24 @@ def scene_ply(sid: str) -> FileResponse:
     return FileResponse(_session(sid).ply, media_type="application/octet-stream")
 
 
+def _floor_y(s: Session) -> float | None:
+    if s.scene() != "home":
+        return None
+    try:
+        from loci.nav_run import grid_for
+
+        return round(grid_for(s).floor_y, 3)
+    except Exception:  # noqa: BLE001  (a missing floor must not break the scene)
+        return None
+
+
 @app.get("/scene/{sid}")
 def scene(sid: str) -> dict[str, Any]:
     """Camera path, 'you are here' pose, object boxes and (street) shop markers for the viewer."""
     s = _session(sid)
     g = np.load(s.geometry)
-    poses = g["poses"]
+    poses, K = g["poses"], g["intrinsics"]
+    h, w = g["depth"].shape[1:3]
     objs = s.read(s.objects)
     kfs = s.keyframes()
     return {
@@ -141,7 +153,18 @@ def scene(sid: str) -> dict[str, Any]:
         "camera_path": poses[:, :3, 3].round(3).tolist(),
         "camera_times": [k["t"] for k in kfs],
         "you_are_here": poses[-1].round(4).tolist(),
+        # per keyframe: camera rotation and vertical field of view, to show where a photo was taken from
+        "cameras": [
+            {
+                "keyframe": int(k),
+                "R": poses[i][:3, :3].round(4).tolist(),
+                "fov_y_deg": round(float(np.degrees(2 * np.arctan(h / (2 * K[i][1, 1])))), 2),
+                "aspect": round(w / h, 4),
+            }
+            for i, k in enumerate(g["keyframe_index"])
+        ],
         "up": g["up"].tolist(),
+        "floor_y": _floor_y(s),
         "objects": [
             {
                 k: o.get(k)
@@ -203,6 +226,14 @@ def privacy(sid: str) -> dict[str, Any]:
         "blurred": {p: v["instances"] for p, v in led["totals"].items()},
         "frames_with_blur": sum(1 for f in led["frames"] if f["blurred_fraction"] > 0),
     }
+
+
+@app.get("/navigate/{sid}/{object_id}")
+def navigate(sid: str, object_id: str) -> dict[str, Any]:
+    """Robot path from 'you are here' to beside the object, over the floor grid."""
+    from loci.nav_run import navigate as nav
+
+    return nav(_session(sid), object_id)
 
 
 @app.get("/quality/{sid}")

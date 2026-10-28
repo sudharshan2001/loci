@@ -220,8 +220,23 @@ def complete(ans: dict[str, Any], mem: Memory) -> dict[str, Any]:
         "position_m": o["position_m"],
         "extent_m": o["extent_m"],
         "units": "metres",
-        "axes": "x right, y down, z forward of the capture's first camera",
+        "axes": "x right, y down, z forward of the capture's first camera, gravity-aligned",
     }
+    if o.get("scene") == "home":
+        try:  # a path for a ground robot; never let planning break an answer
+            from loci.nav_run import navigate
+            from loci.session import Session
+
+            nav = navigate(Session.named(sid), oid.split(":", 1)[1])
+            if nav.get("ok"):
+                ans["robot_goal"].update(
+                    approach_point_m=nav["approach_point_m"],
+                    waypoints_m=nav["waypoints_m"],
+                    path_length_m=nav["length_m"],
+                    through_unscanned_fraction=nav["through_unscanned_fraction"],
+                )
+        except Exception as e:  # noqa: BLE001
+            log.warning("navigation failed for %s: %s", oid, e)
     return ans
 
 
