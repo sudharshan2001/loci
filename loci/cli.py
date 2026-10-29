@@ -46,6 +46,7 @@ def extract(
     scene: Scene = typer.Option(Scene.home, "--scene"),
     session: str | None = typer.Option(None, help="Session id (default: derived from the video)"),
     max_keyframes: int | None = typer.Option(None, "--max-keyframes", "-n"),
+    start: str | None = typer.Option(None, "--start", help='where the walk began, e.g. "my office (Novel MSR Park)"'),
 ) -> None:
     """Stage 1: pick sharp, evenly spread keyframes and extract audio."""
     from loci.session import Session
@@ -56,7 +57,7 @@ def extract(
     kfs = stage.run(
         video,
         s.root,
-        max_keyframes or cfg["max_keyframes"],
+        max_keyframes if max_keyframes is not None else cfg["max_keyframes"],
         cfg["candidate_fps"],
         cfg["min_sharpness_quantile"],
     )
@@ -70,6 +71,7 @@ def extract(
             "scene": scene.value,
             "video": str(video.resolve()),
             "captured_at": stage.captured_at(video),
+            "start_name": start,
         },
     )
     typer.echo(f"{s.id}: {len(kfs)} keyframes, {kfs[0].t:.2f}s-{kfs[-1].t:.2f}s" if kfs else f"{s.id}: none")
@@ -138,7 +140,13 @@ def geometry(session: str) -> None:
     from loci.stages import geometry as stage
 
     s = _session(session)
-    res = stage.run(s, str(repo_path(_cfg()["models"]["mapanything"]["checkpoint"])))
+    gcfg = _cfg().get("geometry", {})
+    res = stage.run(
+        s,
+        str(repo_path(_cfg()["models"]["mapanything"]["checkpoint"])),
+        chunk_views=gcfg.get("chunk_views", 60),
+        chunk_overlap=gcfg.get("chunk_overlap", 10),
+    )
     typer.echo(f"{s.id}: {res['n_views']} views, path {res['camera_path_m']} m, {res['ply_points']} points")
 
 
@@ -253,6 +261,7 @@ def build(
     scene: Scene = typer.Option(Scene.home, "--scene"),
     session: str | None = typer.Option(None, help="Session id (default: derived from the video)"),
     from_stage: str | None = typer.Option(None, "--from", help="re-run this stage and everything after it"),
+    start: str | None = typer.Option(None, "--start", help='where the walk began, e.g. "my office (Novel MSR Park)"'),
 ) -> None:
     """Run every stage on a video, each in its own subprocess (VRAM is freed between stages)."""
     import subprocess
@@ -277,7 +286,7 @@ def build(
         log.info("stage %s done in %.0fs", args[0], time.perf_counter() - t)
 
     if from_stage == "extract" or not (s.root / "keyframes").exists() and not s.raw_dir.exists():
-        run(["extract", str(video), "--scene", scene.value, "--session", sid])
+        run(["extract", str(video), "--scene", scene.value, "--session", sid, *(["--start", start] if start else [])])
     for stage, marker in STAGES:
         if from_stage == stage:
             rerun = True

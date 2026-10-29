@@ -88,6 +88,11 @@ def select_keyframes(
     return picked
 
 
+def keyframe_budget(duration_s: float, per_second: float = 1.0, lo: int = 60, hi: int = 360) -> int:
+    """About one keyframe per second of walking, at least 60 (short clips) and at most 360 (6-minute walks)."""
+    return int(np.clip(round(duration_s * per_second), lo, hi))
+
+
 def session_id_for(video: Path) -> str:
     """Stable id: file stem plus a short hash of size and first MiB."""
     h = hashlib.sha1(str(video.stat().st_size).encode())
@@ -140,13 +145,19 @@ def run(
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
     n_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     step = max(1, round(fps / candidate_fps))
+    if max_keyframes <= 0:  # budget follows the length of the walk
+        max_keyframes = keyframe_budget(n_frames / fps)
 
-    # pass 1: score candidates (sharpness) and measure how far the view moved between them
+    # pass 1 (sequential read; seeking every candidate is slow on long 1080p videos): score candidates
+    # (sharpness) and measure how far the view moved between them
     cand_frames, cand_scores, shifts = [], [], []
     prev = None
-    for fi in range(0, n_frames, step):
-        cap.set(cv2.CAP_PROP_POS_FRAMES, fi)
-        ok, img = cap.read()
+    for fi in range(n_frames):
+        if not cap.grab():
+            break
+        if fi % step:
+            continue
+        ok, img = cap.retrieve()
         if not ok:
             break
         cand_frames.append(fi)
@@ -158,16 +169,24 @@ def run(
     times = frames / fps
     picked = select_keyframes(times, scores, max_keyframes, min_quantile, progress(times, np.array(shifts)))
 
-    # pass 2: write the picked frames at full resolution
+    # pass 2 (sequential again): write the picked frames at full resolution
+    wanted = {int(frames[ci]): ci for ci in picked}
     keyframes: list[Keyframe] = []
-    for k, ci in enumerate(picked):
-        cap.set(cv2.CAP_PROP_POS_FRAMES, int(frames[ci]))
-        ok, img = cap.read()
+    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+    last = max(wanted) if wanted else -1
+    for fi in range(last + 1):
+        if not cap.grab():
+            break
+        if fi not in wanted:
+            continue
+        ok, img = cap.retrieve()
         if not ok:
             continue
+        ci = wanted[fi]
+        k = len(keyframes)
         name = f"{k:04d}.jpg"
         cv2.imwrite(str(raw_dir / name), img, [cv2.IMWRITE_JPEG_QUALITY, 95])
-        keyframes.append(Keyframe(k, int(frames[ci]), round(float(times[ci]), 3), round(float(scores[ci]), 1), name))
+        keyframes.append(Keyframe(k, fi, round(float(times[ci]), 3), round(float(scores[ci]), 1), name))
     cap.release()
 
     has_audio = extract_audio(video, session_dir / "audio.wav")

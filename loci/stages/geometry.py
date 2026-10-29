@@ -96,6 +96,8 @@ def run(
     max_points: int = 500_000,
     conf_percentile: float = 20,
     street_max_depth_m: float = 25.0,
+    chunk_views: int = 60,
+    chunk_overlap: int = 10,
 ) -> dict:
     import torch
     from mapanything.models import MapAnything
@@ -108,26 +110,55 @@ def run(
     model = MapAnything.from_pretrained(checkpoint).to("cuda").eval()
     load_s = time.perf_counter() - t0
 
-    views = load_images(files)
-    t1 = time.perf_counter()
-    with torch.no_grad():
-        preds = model.infer(
-            views,
-            memory_efficient_inference=True,
-            use_amp=True,
-            amp_dtype="bf16",
-            apply_mask=True,
-            mask_edges=True,
-        )
-    infer_s = time.perf_counter() - t1
+    from loci.chunks import align, chunk_ranges, transform_points, transform_poses
 
-    poses, K = _cat(preds, "camera_poses"), _cat(preds, "intrinsics")
-    depth, conf, pts3d = _cat(preds, "depth_z")[..., 0], _cat(preds, "conf"), _cat(preds, "pts3d")
-    valid = torch.cat([p["mask"] for p in preds]).cpu().numpy()[..., 0].astype(bool)
-    rgb = (_cat(preds, "img_no_norm").clip(0, 1) * 255).astype(np.uint8)
-    n, h, w = depth.shape
-    del preds, model
+    parts: dict[str, list[np.ndarray]] = {k: [] for k in ("poses", "K", "depth", "conf", "pts3d", "valid", "rgb")}
+    joins = []
+    t1 = time.perf_counter()
+    ranges = chunk_ranges(len(files), chunk_views, chunk_overlap)
+    for ci, (a, b) in enumerate(ranges):
+        views = load_images(files[a:b])
+        with torch.no_grad():
+            preds = model.infer(
+                views, memory_efficient_inference=True, use_amp=True, amp_dtype="bf16", apply_mask=True, mask_edges=True
+            )
+        c = {
+            "poses": _cat(preds, "camera_poses"),
+            "K": _cat(preds, "intrinsics"),
+            "depth": _cat(preds, "depth_z")[..., 0],
+            "conf": _cat(preds, "conf"),
+            "pts3d": _cat(preds, "pts3d"),
+            "valid": torch.cat([p["mask"] for p in preds]).cpu().numpy()[..., 0].astype(bool),
+            "rgb": (_cat(preds, "img_no_norm").clip(0, 1) * 255).astype(np.uint8),
+        }
+        del preds, views
+        torch.cuda.empty_cache()
+        skip = 0
+        if ci > 0:  # map this chunk into the first chunk's frame using the frames it shares with the previous
+            skip = ranges[ci - 1][1] - a
+            ref = np.concatenate(parts["poses"])[a : a + skip]
+            sc, R, t = align(ref, c["poses"][:skip])
+            c["poses"] = transform_poses(c["poses"], sc, R, t)
+            c["pts3d"] = transform_points(c["pts3d"], sc, R, t)
+            c["depth"] = c["depth"] * sc
+            err = np.linalg.norm(c["poses"][:skip, :3, 3] - ref[:, :3, 3], axis=1)
+            joins.append(
+                {
+                    "chunk": ci,
+                    "frames": [a, b],
+                    "shared": skip,
+                    "scale": round(sc, 3),
+                    "shared_cam_err_m": round(float(err.mean()), 3),
+                }
+            )
+            log.info("chunk %d [%d:%d] joined: scale %.3f, shared-camera error %.3f m", ci, a, b, sc, err.mean())
+        for k in parts:
+            parts[k].append(c[k][skip:])  # shared frames keep the earlier chunk's data
+    infer_s = time.perf_counter() - t1
+    poses, K, depth, conf, pts3d, valid, rgb = (np.concatenate(parts[k]) for k in parts)
+    del model
     torch.cuda.empty_cache()
+    n, h, w = depth.shape
 
     # mapping from keyframe pixels to depth pixels (all keyframes share one size)
     from PIL import Image
@@ -190,6 +221,8 @@ def run(
         "infer_s": round(infer_s, 1),
         "peak_vram_gb": round(torch.cuda.max_memory_allocated() / 1e9, 2),
         "camera_path_m": round(path_m, 2),
+        "chunks": len(joins) + 1,
+        "joins": joins,
         "median_depth_m": round(float(np.median(depth[valid])), 2),
         "ply_points": int(len(pts)),
         "up": up.round(3).tolist(),

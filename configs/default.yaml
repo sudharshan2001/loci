@@ -34,7 +34,7 @@ providers:
   transcriber: faster_whisper
 
 extract:
-  max_keyframes: 80
+  max_keyframes: 0  # 0 = follow the walk's length: ~1 per second, 60..360 (geometry runs in chunks)
   candidate_fps: 8  # more candidates so fast pans can get more keyframes
   min_sharpness_quantile: 0.3
 
@@ -55,3 +55,8 @@ track:
 demo:
   # serve verified answers from data/answer_cache.json (fill it with `loci warm eval/questions.yaml`)
   cache_answers: false
+
+geometry:
+  # MapAnything views per chunk (~13 GB at 80, ~12 GB at 60, ~11 GB at 20) and frames shared between chunks
+  chunk_views: 60
+  chunk_overlap: 10

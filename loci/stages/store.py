@@ -16,7 +16,8 @@ log = logging.getLogger(__name__)
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS sessions (
   session_id TEXT PRIMARY KEY, scene TEXT, video TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-  duration_s REAL, n_keyframes INTEGER, camera_path_m REAL, up TEXT, to_room_frame TEXT, captured_at TEXT
+  duration_s REAL, n_keyframes INTEGER, camera_path_m REAL, up TEXT, to_room_frame TEXT, captured_at TEXT,
+  start_name TEXT
 );
 CREATE TABLE IF NOT EXISTS keyframes (
   session_id TEXT, keyframe INTEGER, t REAL, file TEXT, area TEXT, cam2world TEXT,
@@ -73,6 +74,8 @@ def connect(path: Path) -> sqlite3.Connection:
     cols = {r["name"] for r in con.execute("PRAGMA table_info(sessions)")}
     if "captured_at" not in cols:
         con.execute("ALTER TABLE sessions ADD COLUMN captured_at TEXT")
+    if "start_name" not in cols:
+        con.execute("ALTER TABLE sessions ADD COLUMN start_name TEXT")
     return con
 
 
@@ -130,8 +133,8 @@ def run(session: Session, db_path: Path) -> dict:
         for t in PER_SESSION:
             con.execute(f"DELETE FROM {t} WHERE session_id=?", (sid,))  # noqa: S608 (fixed table names)
         con.execute(
-            "INSERT INTO sessions (session_id, scene, video, duration_s, n_keyframes, camera_path_m, up, captured_at) "
-            "VALUES (?,?,?,?,?,?,?,?)",
+            "INSERT INTO sessions (session_id, scene, video, duration_s, n_keyframes, camera_path_m, up, captured_at,"
+            " start_name) VALUES (?,?,?,?,?,?,?,?,?)",
             (
                 sid,
                 meta["scene"],
@@ -141,6 +144,7 @@ def run(session: Session, db_path: Path) -> dict:
                 meta.get("geometry", {}).get("camera_path_m"),
                 _j(g["up"].tolist()),
                 meta.get("captured_at"),
+                meta.get("start_name"),
             ),
         )
         con.executemany(

@@ -50,3 +50,9 @@ def test_image_shift_detects_translation() -> None:
     moved = np.roll(img, 16, axis=1)
     assert image_shift(img, img) < 0.02
     assert 0.07 < image_shift(img, moved) < 0.15
+
+
+def test_keyframe_budget_follows_length() -> None:
+    from loci.stages.extract import keyframe_budget
+
+    assert keyframe_budget(18) == 60 and keyframe_budget(120) == 120 and keyframe_budget(370) == 360

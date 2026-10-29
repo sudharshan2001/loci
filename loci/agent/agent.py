@@ -34,6 +34,8 @@ capture time; if it is movable and the sighting is old, say so ("that was this m
 capture, giving its time; if an older capture differs, mention it ("it was off in the morning capture").
 - "What changed / moved since ...": call list_captures, then what_changed with the earlier and the later \
 capture of that place.
+- "Into the walk" distances are measured from where the walk started; list_captures gives each walk's \
+start_name (e.g. the user's office). For "how far from my office/start", call route with from_id "start".
 - Directions between two places on a walk: call route and give distance, direction and one or two landmarks.
 - Street answers: give the shop name as read from the sign, the side (on your left/right), the distance into \
 the walk in metres, and the time.
@@ -101,7 +103,8 @@ TOOLS = [
     ),
     (
         "route",
-        "Walking directions between two things seen on the same street walk: distance, direction, what you pass.",
+        'Walking directions between two things seen on the same street walk (from_id may be "start", the start '
+        "of the walk): distance, direction, what you pass.",
         {"from_id": {"type": "string"}, "to_id": {"type": "string"}},
         ["from_id", "to_id"],
     ),

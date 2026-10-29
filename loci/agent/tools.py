@@ -377,7 +377,9 @@ class Memory:
         return out
 
     def list_captures(self) -> list[dict[str, Any]]:
-        rows = self.con.execute("SELECT session_id, scene, captured_at FROM sessions ORDER BY captured_at").fetchall()
+        rows = self.con.execute(
+            "SELECT session_id, scene, captured_at, start_name FROM sessions ORDER BY captured_at"
+        ).fetchall()
         return [dict(r) for r in rows]
 
     def what_changed(self, session_a: str, session_b: str) -> dict[str, Any]:
@@ -451,7 +453,25 @@ class Memory:
         return res
 
     def route(self, from_id: str, to_id: str) -> dict[str, Any]:
-        """Walking directions between two things seen on the same walk, following the path you took."""
+        """Walking directions between two things seen on the same walk, following the path you took.
+
+        from_id may be "start": the beginning of that walk (e.g. the user's office)."""
+        if from_id == "start":
+            b = self._obj(to_id)
+            if b is None or b["distance_along_walk_m"] is None:
+                return {"error": f"unknown street object {to_id}"}
+            start = self.con.execute(
+                "SELECT start_name FROM sessions WHERE session_id=?", (b["session_id"],)
+            ).fetchone()
+            return {
+                "from": start["start_name"] or "the start of the walk",
+                "to": to_id,
+                "walk_m": b["distance_along_walk_m"],
+                "direction": "the way you walked",
+                "destination_side": f"on your {b['side']}",
+                "passed_at": fmt_time(b["passed_at"]),
+                "evidence": [b["best_obs"]],
+            }
         a, b = self._obj(from_id), self._obj(to_id)
         if a is None or b is None:
             return {"error": f"unknown object {from_id if a is None else to_id}"}

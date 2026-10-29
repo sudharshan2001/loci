@@ -174,3 +174,13 @@ def test_plurals_compounds_and_new_synonyms() -> None:
     assert labels("shelves") == ["wooden bookshelf"]
     assert labels("white pots") == ["white flower pot"]
     assert "keyboard" not in labels("board")  # "key" is too short a prefix for a compound match
+
+
+def test_route_from_the_start_of_the_walk() -> None:
+    mem = _mem()
+    mem.con.execute("UPDATE sessions SET start_name='my office (Novel MSR Park)' WHERE session_id='walk'")
+    r = mem.route("start", "walk:fruit_stall_1")
+    assert (
+        r["from"] == "my office (Novel MSR Park)" and r["walk_m"] == 20.0 and r["destination_side"] == "on your right"
+    )
+    assert any(c["start_name"] for c in mem.list_captures())
