@@ -79,6 +79,11 @@ def glimmer_server(log_path: Path | None = None) -> Iterator[str]:
         str(cfg["port"]),
     ]
     free = free_gpu_mb()
+    if free is not None and free < cfg.get("min_gpu_mb", 12800):
+        raise RuntimeError(
+            f"Glimmer needs about 12.5 GB of GPU memory but only {free} MB is free; another process is using the "
+            "GPU. Free it and re-run (finished stages are cached)."
+        )
     if free is not None and free < cfg.get("full_gpu_mb", 15200):
         # not enough room for weights + vision projector on the GPU: keep the projector on the CPU (12.4 GB);
         # images get slower (~27 s), text keeps full speed
