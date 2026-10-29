@@ -31,6 +31,19 @@ def _cfg() -> dict[str, Any]:
     return load_config()["models"]["glimmer"]
 
 
+def free_gpu_mb() -> int | None:
+    try:
+        out = subprocess.run(
+            ["nvidia-smi", "--query-gpu=memory.free", "--format=csv,noheader,nounits"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        ).stdout
+        return int(out.split()[0])
+    except (OSError, ValueError, IndexError, subprocess.TimeoutExpired):
+        return None
+
+
 def _healthy(base_url: str) -> bool:
     try:
         return requests.get(base_url.removesuffix("/v1") + "/health", timeout=2).status_code == 200
@@ -65,6 +78,12 @@ def glimmer_server(log_path: Path | None = None) -> Iterator[str]:
         "--port",
         str(cfg["port"]),
     ]
+    free = free_gpu_mb()
+    if free is not None and free < cfg.get("full_gpu_mb", 15200):
+        # not enough room for weights + vision projector on the GPU: keep the projector on the CPU (12.4 GB);
+        # images get slower (~27 s), text keeps full speed
+        cmd.append("--no-mmproj-offload")
+        log.warning("only %d MB GPU free: vision projector on CPU", free)
     logf = open(log_path, "w") if log_path else subprocess.DEVNULL
     t0 = time.perf_counter()
     proc = subprocess.Popen(cmd, stdout=logf, stderr=subprocess.STDOUT)

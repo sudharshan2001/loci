@@ -55,3 +55,29 @@
       expect: [signboard, shop sign]
     - q: "தேங்காய் கடை எங்கே இருந்தது?"  # Tamil: where was the coconut shop?
       expect: [fruit stand, coconut stall, street stall]
+
+- clip: street2.mp4   # 6-minute walk from the office (Novel MSR Park), 1080p, no audio
+  scene: street
+  questions:
+    - q: "Where was Kalyan Jewellers?"
+      expect: [signboard, shop sign, shop front]
+    - q: "Where was the Levi's store?"
+      expect: [signboard, shop sign, shop front]
+    - q: "Which side of the road was BIBA on?"
+      expect: [signboard, shop sign, shop front]
+    - q: "How far from my office was Louis Philippe?"
+      expect: [signboard, shop sign, shop front]
+    - q: "How do I get from Kalyan Jewellers to Levi's?"
+      note: uses route; distance, direction and shops passed in between
+    - q: "Did I pass a fruit cart?"
+      expect: [fruit cart, fruit stall, fruit stand, cart, street stall, banana]
+    - q: "What clothing stores did I pass?"
+      expect: [signboard, shop sign, shop front]
+    - q: "Was there a Lenovo shop?"
+      expect: [signboard, shop sign, shop front]
+    - q: "Where's the nearest metro station?"
+      refuse: true
+    - q: "ಕಲ್ಯಾಣ್ ಜ್ಯುವೆಲ್ಲರ್ಸ್ ಎಲ್ಲಿತ್ತು?"  # Kannada: where was Kalyan Jewellers?
+      expect: [signboard, shop sign, shop front]
+    - q: "லீவைஸ் கடை எங்கே இருந்தது?"  # Tamil: where was the Levi's shop?
+      expect: [signboard, shop sign, shop front]
