@@ -40,11 +40,12 @@ def score(item: dict, ans: dict, mem: Memory) -> tuple[bool, str]:
     oid = ans.get("object_id")
     if item.get("refuse"):
         return oid is None, "refused" if oid is None else f"answered {label_of(mem, oid)}"
-    if oid is None:
+    if oid is None and not ans.get("objects") and not ans.get("evidence"):
         return False, "refused"
     if not ans.get("verified"):
         return False, "not sure (unverified)"
-    labels = [lab for lab in [label_of(mem, oid), *(label_of(mem, u) for u in ans.get("objects") or [])] if lab]
+    ids = [oid, *(ans.get("objects") or [])] if oid else ans.get("objects") or []
+    labels = [lab for lab in (label_of(mem, u) for u in ids) if lab]
     if item.get("state"):
         st = mem.get_state(oid).get("state") or {}
         ok = all(st.get(k) == v for k, v in item["state"].items())

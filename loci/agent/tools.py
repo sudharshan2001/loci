@@ -193,15 +193,20 @@ class Memory:
             if score >= 80:
                 scored.append((score, r))
         scored.sort(key=lambda x: (-x[0], -x[1]["last_seen"]))
-        # at most 3 per label, so a related kind ("fruit stand" for "coconut stall") is not crowded out by
-        # many objects of one label
-        per_label: dict[str, int] = {}
+        # at most 3 per label in each capture, and captures take turns, so a related kind ("fruit stand" for
+        # "coconut stall") or a short capture is not crowded out by a long walk with many objects of one label
+        per_label: dict[tuple[str, str], int] = {}
+        per_session: dict[str, int] = {}
         varied = []
         for sc, r in scored:
-            per_label[r["label"]] = per_label.get(r["label"], 0) + 1
-            if per_label[r["label"]] <= 3:
-                varied.append((sc, r))
-        scored = varied
+            key = (r["session_id"], r["label"])
+            per_label[key] = per_label.get(key, 0) + 1
+            if per_label[key] <= 3:
+                turn = per_session.get(r["session_id"], 0)
+                per_session[r["session_id"]] = turn + 1
+                varied.append((turn, sc, r))
+        varied.sort(key=lambda x: (x[0], -x[1], -x[2]["last_seen"]))
+        scored = [(sc, r) for _, sc, r in varied]
         return [
             {
                 "id": uid(r),
@@ -505,7 +510,9 @@ class Memory:
             "evidence": [b["best_obs"]],
         }
 
-    def places_passed(self, session_id: str | None = None) -> list[dict[str, Any]]:
+    def places_passed(self, session_id: str | None = None, per_walk: int = 40) -> list[dict[str, Any]]:
+        """Places along the walks, in walk order. The same name read again nearby counts as one place, and a long
+        walk keeps the places seen most, so the list fits in the context."""
         # read signs, plus stalls and shop fronts even when no sign text could be read
         q = (
             "SELECT * FROM objects WHERE distance_along_walk_m IS NOT NULL AND ((text IS NOT NULL AND text != '') "
@@ -516,6 +523,29 @@ class Memory:
             q += " AND session_id=?"
             args = (session_id,)
         rows = self.con.execute(q + " ORDER BY session_id, distance_along_walk_m", args).fetchall()
+        walks: dict[str, list[dict[str, Any]]] = {}
+        for r in rows:
+            name = (r["text_english"] or r["text"] or "").lower().strip()
+            places = walks.setdefault(r["session_id"], [])
+            same = next(
+                (
+                    p
+                    for p in places
+                    if name
+                    and p["name"]
+                    and fuzz.ratio(name, p["name"]) >= 88
+                    and r["distance_along_walk_m"] - p["row"]["distance_along_walk_m"] <= 40
+                ),
+                None,
+            )
+            if same:
+                same["seen"] += r["n_obs"]
+            else:
+                places.append({"name": name, "row": r, "seen": r["n_obs"]})
+        out = []
+        for places in walks.values():
+            top = sorted(places, key=lambda p: -p["seen"])[:per_walk]
+            out += sorted(top, key=lambda p: p["row"]["distance_along_walk_m"])
         return [
             {
                 "id": uid(r),
@@ -527,7 +557,7 @@ class Memory:
                 "passed_at": fmt_time(r["passed_at"]),
                 "evidence": [r["best_obs"]],
             }
-            for r in rows
+            for r in (p["row"] for p in out)
         ]
 
     def objects_near(self, id: str, radius_m: float = 1.0) -> list[dict[str, Any]]:

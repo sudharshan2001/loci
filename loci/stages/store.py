@@ -5,11 +5,14 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
+import unicodedata
 from pathlib import Path
 
 import numpy as np
 
+from loci.config import load_config
 from loci.session import Session
+from loci.stages.attributes import SIGN_LABELS
 
 log = logging.getLogger(__name__)
 
@@ -107,6 +110,31 @@ def register_to_reference(con: sqlite3.Connection, sid: str) -> dict:
     return res
 
 
+def _is_junk_text(text: str | None) -> bool:
+    """Sign readings of one or two letters ("S", "K") are fragments, and they match every search."""
+    return sum(unicodedata.category(c)[0] in "LMN" for c in text or "") < 3
+
+
+def tidy_objects(objects: list[dict], exclude: list[str]) -> list[dict]:
+    """What goes into memory: no excluded kinds, no fragment readings, and signs named only by what they read.
+
+    Naming can invent a brand label ("levi s outlet sign") that SAM then puts on other shops' boards; the name of
+    a shop comes from reading its sign.
+    """
+    kept = []
+    for o in objects:
+        label = o["label"]
+        if any(label == x or label.endswith(f" {x}") for x in exclude):
+            continue
+        o = dict(o)
+        if label.endswith(" sign") and label not in SIGN_LABELS:
+            o.update(label="signboard", aliases=[])
+        if _is_junk_text(o.get("text")):
+            o.update(text=None, text_english=None)
+        kept.append(o)
+    return kept
+
+
 def run(session: Session, db_path: Path) -> dict:
     import numpy as np
 
@@ -116,11 +144,16 @@ def run(session: Session, db_path: Path) -> dict:
     kf_meta = session.read(session.keyframes_json)
     kfs = kf_meta["keyframes"]
     areas = session.read(session.vocab)["areas"]
-    objects = session.read(session.objects)
-    obs = session.read(session.observations)
+    all_objects = session.read(session.objects)
+    exclude = load_config()["scenes"][meta["scene"]].get("exclude_from_memory", [])
+    objects = tidy_objects(all_objects, exclude)
+    kept = {o["object_id"] for o in objects}
+    dropped_obs = {i for o in all_objects if o["object_id"] not in kept for i in o["obs_ids"]}
+    obs = [b for b in session.read(session.observations) if b["obs_id"] not in dropped_obs]
     obj_of = {oid: o["object_id"] for o in objects for oid in o["obs_ids"]}
     rels_path = session.root / "relations.json"
     rels = session.read(rels_path) if rels_path.exists() else []
+    rels = [r for r in rels if r["subject"] in kept and r["object"] in kept]
     utt = session.read(session.utterances) if session.utterances.exists() else {"utterances": [], "links": []}
     ledger = session.read(session.ledger)
     g = load(session)

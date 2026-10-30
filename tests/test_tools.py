@@ -184,3 +184,35 @@ def test_route_from_the_start_of_the_walk() -> None:
         r["from"] == "my office (Novel MSR Park)" and r["walk_m"] == 20.0 and r["destination_side"] == "on your right"
     )
     assert any(c["start_name"] for c in mem.list_captures())
+
+
+def test_search_gives_every_capture_a_turn() -> None:
+    mem = _mem()
+    for i in range(6):
+        mem.con.execute(
+            "INSERT INTO objects (object_id, session_id, label, aliases, last_seen) VALUES (?, 'pm', ?, '[]', 99.0)",
+            (f"stall_{i}", f"fruit stall {'abcdef'[i]}"),
+        )
+    sessions = [h["session"] for h in mem.search_objects("fruit stall", limit=2)]
+    assert sorted(sessions) == ["pm", "walk"]
+
+
+def test_places_merge_repeated_readings_and_cap_long_walks() -> None:
+    mem = _mem()
+
+    def sign(oid, text, dist, n_obs=1):
+        mem.con.execute(
+            "INSERT INTO objects (object_id, session_id, label, aliases, text, text_english, distance_along_walk_m, "
+            "n_obs, last_seen) VALUES (?, 'walk', 'signboard', '[]', ?, ?, ?, ?, 1.0)",
+            (oid, text, text, dist, n_obs),
+        )
+
+    sign("a", "Kalyan Jewellers", 100.0, 2)
+    sign("b", "KALYAN JEWELLERS", 110.0, 3)
+    sign("c", "Kalyan Jewellers", 300.0)  # a second branch further on stays separate
+    names = [p["name"] for p in mem.places_passed("walk") if (p["name"] or "").lower().startswith("kalyan")]
+    assert len(names) == 2
+    capped = mem.places_passed("walk", per_walk=2)
+    assert len(capped) == 2 and "walk:a" in [p["id"] for p in capped]  # the most-seen place stays
+    dist = [p["distance_along_walk_m"] for p in capped]
+    assert dist == sorted(dist)

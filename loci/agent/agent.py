@@ -43,6 +43,8 @@ the walk in metres, and the time.
 - If search returns things of a related kind but not the exact name (a "street stall" or "fruit stand" when \
 asked about a coconut stall), call look on the likely candidates before deciding. Answer about the one that \
 look confirms; only say it was not seen if look rules them all out.
+- Kinds of shop ("clothing stores", "jewellers"): call places_passed and choose from the names by what you know \
+of them (Allen Solly and Louis Philippe sell clothes); give each one's name, side and distance.
 - If nothing matching was seen, say so plainly: "I haven't seen a <thing> in any capture." and set \
 object_id to null.
 - Keep the answer to one or two short spoken-style sentences, in the same language as the question (answer a \
@@ -51,6 +53,35 @@ Kannada, Tamil or Hindi question in that language; keep shop names as written on
 When you are done, reply with ONLY this JSON:
 {"answer": str, "object_id": "<session>:<object>" or null, "objects": [other ids mentioned], \
 "location_text": str or null, "seen_at": "m:ss" or null, "evidence": [observation ids], "confidence": 0..1}"""
+
+SCRIPTS = {
+    "Hindi": (0x0900, 0x097F),
+    "Tamil": (0x0B80, 0x0BFF),
+    "Telugu": (0x0C00, 0x0C7F),
+    "Kannada": (0x0C80, 0x0CFF),
+}
+
+
+def script_counts(text: str) -> dict[str, int]:
+    return {lang: sum(lo <= ord(c) <= hi for c in text) for lang, (lo, hi) in SCRIPTS.items()}
+
+
+def question_language(question: str) -> str | None:
+    counts = script_counts(question)
+    lang = max(counts, key=lambda k: counts[k])
+    return lang if counts[lang] else None
+
+
+def language_problems(question: str, answer: str) -> list[str]:
+    """An Indian-language question gets its answer mostly in that language (shop names may stay as written)."""
+    lang = question_language(question)
+    if lang is None:
+        return []
+    counts = script_counts(answer)
+    if counts[lang] and counts[lang] >= max(counts.values()):
+        return []
+    return [f"the question is in {lang}: write the answer in {lang}, keeping only shop names as written"]
+
 
 TOOLS = [
     (
@@ -311,6 +342,9 @@ def ask(
         {"role": "system", "content": SYSTEM},
         {"role": "user", "content": question},
     ]
+    lang = question_language(question)
+    if lang:
+        messages[-1]["content"] = f"{question}\n\n(Answer in {lang}.)"
     candidates: list[dict] = []
     for attempt in range(2):
         ans = None
@@ -347,14 +381,14 @@ def ask(
                     {
                         "role": "tool",
                         "tool_call_id": c.get("id", name),
-                        "content": json.dumps(result, ensure_ascii=False)[:6000],
+                        "content": json.dumps(result, ensure_ascii=False)[:9000],
                     }
                 )
         if not isinstance(ans, dict):
             problems = ["agent did not produce a final answer"]
         else:
             ans = complete(ans, mem)
-            problems = verify(ans, mem)
+            problems = verify(ans, mem) + language_problems(question, str(ans.get("answer") or ""))
             if not problems:
                 ans.update(
                     verified=True,

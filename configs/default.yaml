@@ -48,6 +48,9 @@ scenes:
     redact_prompts: {face: 0.3, license plate: 0.3}
     vocab: [shop sign, signboard, shop front, fruit stall, vegetable stall, coconut stall, bus stop, ATM, tree]
     exclude_from_pointcloud: [person, car, motorcycle, auto rickshaw, bus]
+    # not stored as memories: what passers-by carry or ride belongs to them, and it does not stay put
+    exclude_from_memory: [person, car, motorcycle, scooter, suv, sedan, auto rickshaw, bus, helmet, backpack, bag,
+                          mobile phone, phone, water bottle, umbrella]
 
 track:
   min_score: 0.5
