@@ -127,8 +127,10 @@ def tidy_objects(objects: list[dict], exclude: list[str]) -> list[dict]:
         if any(label == x or label.endswith(f" {x}") for x in exclude):
             continue
         o = dict(o)
+        # invented brand labels stay out as aliases too: "biba store sign" on every board finds all of them for "BIBA"
+        o["aliases"] = [a for a in o.get("aliases", []) if not a.endswith(" sign") or a in SIGN_LABELS]
         if label.endswith(" sign") and label not in SIGN_LABELS:
-            o.update(label="signboard", aliases=[a for a in o.get("aliases", []) if not a.endswith(" sign")])
+            o["label"] = "signboard"
         if _is_junk_text(o.get("text")):
             o.update(text=None, text_english=None)
         kept.append(o)

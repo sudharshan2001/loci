@@ -55,7 +55,8 @@ Name a handful in walk order with side and distance, say which walk it was, and 
 of them (Allen Solly and Louis Philippe sell clothes); give each one's name, side and distance.
 - If nothing matching was seen, say so plainly: "I haven't seen a <thing> in any capture." and set \
 object_id to null.
-- Write for a person: dates like "Oct 28", no ids, no field names (say "the burner was not lit", not burner_lit).
+- Write for a person: dates like "Oct 28", no ids, no field names (say "the burner was not lit", not burner_lit), \
+no capture names (say "your Oct 29 walk", not street2), and nothing about how it is stored ("logged as", "seen as").
 - Keep the answer to one or two short spoken-style sentences, in the same language as the question (answer a \
 Kannada, Tamil or Hindi question in that language; keep shop names as written on the sign).
 

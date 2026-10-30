@@ -108,6 +108,26 @@ def test_part_of_a_name_is_the_same_shop_but_distance_keeps_branches_apart() -> 
     assert len(far) == 2
 
 
+def test_words_any_shop_uses_do_not_make_one_shop() -> None:
+    objs = [
+        _sign("a", "Reebok OUTLET", 300.0, "left", 5),
+        _sign("b", "Levi's OUTLET", 305.0, "left", 5),
+        _sign("c", "OUTLET", 310.0, "left", 5),
+        _sign("d", "FACTORY OUTLETS", 312.0, "left", 5),
+        _sign("e", "Levi's", 314.0, "left", 9),
+    ]
+    out = merge_same_signs(objs)
+    assert sorted(o["object_id"] for o in out) == ["a", "c", "d", "e"]
+    assert next(o for o in out if o["object_id"] == "e")["n_obs"] == 14
+
+
+def test_a_named_reading_beats_a_clearer_generic_one() -> None:
+    objs = [_sign("a", "OUTLET", 10.0, "left", 9, conf=0.99), _sign("b", "OUTLET", 12.0, "left", 2, conf=0.5)]
+    objs += [_sign("c", "BIBA", 12.0, "left", 2, conf=0.5), _sign("d", "BIBA store", 13.0, "left", 5, conf=0.9)]
+    out = merge_same_signs(objs)
+    assert {o["text"] for o in out} == {"OUTLET", "BIBA store"}
+
+
 def test_unread_signs_are_left_alone() -> None:
     out = merge_same_signs([_sign("a", None, 10.0, "left", 3), _sign("b", None, 11.0, "left", 3)])
     assert len(out) == 2
@@ -168,6 +188,22 @@ def test_clean_answer() -> None:
         "The stove had burner lit false at 0:18."
     )
     assert clean_answer("ಸ್ಟವ್ 0:18 ರಂತೆ") == "ಸ್ಟವ್ 0:18 ರಂತೆ"
+
+
+def test_on_your_left_is_not_the_state_on() -> None:
+    mem = _mem()
+    _insert(mem.con, "stall_1", "s", "fruit stand", [])
+    mem.con.execute("""UPDATE objects SET state='{"shop_open": true}', state_seen_at=2.0 WHERE object_id='stall_1'""")
+    mem.con.execute(
+        "INSERT INTO observations (obs_id, session_id, object_id, keyframe, t, label, score)"
+        " VALUES ('obs_stall_1','s','stall_1',0,2.0,'fruit stand',0.9)"
+    )
+    ans = {
+        "answer": "No, the stall on your left was closed at 0:02.",
+        "object_id": "s:stall_1",
+        "evidence": ["obs_stall_1"],
+    }
+    assert any("stored state" in p for p in verify(ans, mem))
 
 
 def test_a_burner_side_is_not_a_relation() -> None:

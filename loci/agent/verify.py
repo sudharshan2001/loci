@@ -13,7 +13,10 @@ from loci.agent.tools import Memory, fmt_time, split_uid
 REL_RE = re.compile(r"\b(on|inside|left of|right of|near) the ([a-z][a-z \-]*?)(?=,|\.|;| in the |$)")
 METRES_RE = re.compile(r"(\d+(?:\.\d+)?)\s*(?:m\b|metres|meters)")
 NEG_WORDS = re.compile(r"\b(off|not lit|unlit|no flame|closed|not on|not running|switched off)\b")
-POS_WORDS = re.compile(r"\b(lit|on|burning|open|running|switched on|flame)\b")
+# "on" as a state, not "on your left" / "on the desk"
+POS_WORDS = re.compile(
+    r"\b(lit|on(?!\s+(?:the|your|a|an|my|top|left|right)\b)|burning|open|running|switched on|flame)\b"
+)
 
 
 def _labels(row) -> set[str]:
@@ -93,8 +96,8 @@ def verify(ans: dict[str, Any], mem: Memory) -> list[str]:
     for src in sources:
         for word, target in REL_RE.findall(src):
             target = target.strip()
-            if word == "on" and target.startswith(("your ", "left", "right", "the left", "the right")):
-                continue  # a side ("on the right burner"), not a thing it stands on
+            if word == "on" and target.startswith(("your ", "left", "right", "the left", "the right", "burner")):
+                continue  # a side or a part ("on the right burner"), not a thing it stands on
             if not any(word == w and fuzz.WRatio(target, lab) >= 85 for w, lab in stored):
                 if any(f"{word} the {target}" in t for t in known_texts):
                     continue

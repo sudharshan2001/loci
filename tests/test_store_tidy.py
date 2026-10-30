@@ -17,6 +17,9 @@ def test_tidy_brand_labels_and_fragments() -> None:
     # an invented brand label does not survive as an alias either; other readings of the board do
     o = {**_o("d", "levi s outlet sign", "BIBA"), "aliases": ["biba store sign", "ಬಿಬಾ"]}
     assert tidy_objects([o], [])[0]["aliases"] == ["ಬಿಬಾ"]
+    # also on a board whose own label is plain, where it would match every search for that brand
+    o = {**_o("e", "signboard", "Kalyan"), "aliases": ["biba store sign", "shop sign"]}
+    assert tidy_objects([o], [])[0]["aliases"] == ["shop sign"]
     assert kept[1]["label"] == "shop sign" and kept[1]["text"] is None
     # vowel signs count as letters: a three-letter Kannada name is a real reading
     assert tidy_objects([_o("c", "signboard", "ಭೀಮ")], [])[0]["text"] == "ಭೀಮ"

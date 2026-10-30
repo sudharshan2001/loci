@@ -7,6 +7,7 @@ timestamp of the observation it came from: answers say "as of <time>", never "no
 from __future__ import annotations
 
 import logging
+import re
 import time
 from pathlib import Path
 from typing import Any
@@ -35,6 +36,11 @@ DESCRIBE_Q = (
     'Return JSON {{"name": two to four words a person would call it, with its main colour, e.g. "purple plastic '
     'bucket", "sells": what is on sale if it is a stall, cart or shop, as singular nouns, e.g. ["coconut"], else []}}.'
 )
+GENERIC_SIGN_WORDS = {
+    "outlet", "outlets", "store", "stores", "shop", "shops", "factory", "showroom", "the", "new", "sale", "arrivals",
+    "offer", "men", "women", "online", "mall", "jewellery", "jewellers", "jeweller", "gold", "silver", "platinum",
+    "hospital", "fashion", "spa", "salon", "and",
+}  # fmt: skip
 PERSON_WORDS = {"man", "woman", "boy", "girl", "person", "people", "child", "vendor", "shopkeeper", "customer"}
 
 # keyword in the label -> question and the state keys it should return
@@ -140,13 +146,36 @@ def description_aliases(answer: dict) -> list[str]:
     return out
 
 
-def _sign_names(o: dict) -> set[str]:
-    keys = ("".join(filter(str.isalnum, t.lower())) for t in (o.get("text"), o.get("text_english")) if t)
-    return {k for k in keys if len(k) >= 3}
+def _sign_names(o: dict) -> list[tuple[str, ...]]:
+    """Each reading of a sign as words: "Levi's OUTLET" -> ("levis", "outlet")."""
+    readings = (t for t in (o.get("text"), o.get("text_english")) if t)
+    words = (
+        tuple(w for w in re.split(r"[\s/,.&:;*()•–-]+", t.lower().replace("'", "").replace("’", "")) if w)
+        for t in readings
+    )
+    return [w for w in words if len("".join(w)) >= 3]
 
 
-def _same_shop(a: set[str], b: set[str]) -> bool:
-    return any(fuzz.ratio(x, y) >= 88 or (min(len(x), len(y)) >= 4 and (x in y or y in x)) for x in a for y in b)
+def _same_shop(a: list[tuple[str, ...]], b: list[tuple[str, ...]]) -> bool:
+    """The same name, or one name inside the other. Words any shop may use ("OUTLET") say nothing on their own:
+    without this, "Reebok OUTLET" and "Levi's OUTLET" are one shop."""
+    for x in a:
+        for y in b:
+            sx, sy = [w for w in x if w not in GENERIC_SIGN_WORDS], [w for w in y if w not in GENERIC_SIGN_WORDS]
+            if not sx or not sy:
+                if x == y:
+                    return True
+                continue
+            small, large = (sx, sy) if len(sx) <= len(sy) else (sy, sx)
+            if fuzz.ratio(" ".join(sx), " ".join(sy)) >= 88 or (
+                all(len(w) >= 3 for w in small) and set(small) <= set(large)
+            ):
+                return True
+    return False
+
+
+def _names_a_shop(o: dict) -> bool:
+    return any(w not in GENERIC_SIGN_WORDS for name in _sign_names(o) for w in name)
 
 
 def _weighted_median(values: list[float], weights: list[int]) -> float:
@@ -182,7 +211,7 @@ def merge_same_signs(objects: list[dict], radius_m: float = 40.0) -> list[dict]:
         if len(g) < 2:
             continue
         keep = max(g, key=lambda m: m["n_obs"])
-        clearest = max(g, key=lambda m: m.get("attribute_confidence") or 0)
+        clearest = max(g, key=lambda m: (_names_a_shop(m), m.get("attribute_confidence") or 0))
         weights = [m["n_obs"] for m in g]
         readings = {t for m in g for t in (m.get("text"), m.get("text_english")) if t}
         centroid = [_weighted_median([m["centroid"][i] for m in g], weights) for i in range(3)]

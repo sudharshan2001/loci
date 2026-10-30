@@ -55,6 +55,16 @@ def score(item: dict, ans: dict, mem: Memory) -> tuple[bool, str]:
         st = mem.get_state(oid).get("state") or {}
         ok = all(st.get(k) == v for k, v in item["state"].items())
         return ok, f"state {st}"
+    # a shop must be the board that reads this name, not just some sign
+    if item.get("expect_text"):
+        readings = []
+        for u in ids:
+            row = mem._obj(u)
+            if row is not None:
+                readings += [row["text"], row["text_english"], *json.loads(row["aliases"] or "[]")]
+        read = [t for t in readings if t]
+        if not any(fuzz.partial_ratio(item["expect_text"].lower(), t.lower()) >= 85 for t in read):
+            return False, f"no sign reading {item['expect_text']!r}: {read[:4]}"
     exp = item.get("expect") or []
     if not exp:
         return True, "no expectation (manual check)"

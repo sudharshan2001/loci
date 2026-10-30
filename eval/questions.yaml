@@ -21,8 +21,8 @@
       expect: [laptop stand, stand]
     - q: "Is the stove on?"
       note: no lit stove in this capture; a correct answer says no state is recorded or names the stove with as-of time
-    - q: "Are the lights on?"
-      note: answer must be as-of the capture time or say no state was recorded
+    - q: "Are the lights on?"  # no ceiling or lamp is in these walks: saying none was seen is the right answer
+      refuse: true
     - q: "How far is the desk from the door?"
       note: metres, sanity range 1-5 m
     - q: "Where's my passport?"
@@ -62,12 +62,16 @@
   scene: street
   questions:
     - q: "Where was Kalyan Jewellers?"
+      expect_text: kalyan
       expect: [signboard, shop sign, shop front]
     - q: "Where was the Levi's store?"
+      expect_text: levi
       expect: [signboard, shop sign, shop front]
     - q: "Which side of the road was BIBA on?"
+      expect_text: biba
       expect: [signboard, shop sign, shop front]
     - q: "How far from my office was Louis Philippe?"
+      expect_text: louis
       expect: [signboard, shop sign, shop front]
     - q: "How do I get from Kalyan Jewellers to Levi's?"
       note: uses route; distance, direction and shops passed in between
@@ -76,10 +80,13 @@
     - q: "What clothing stores did I pass?"
       expect: [signboard, shop sign, shop front]
     - q: "Was there a Lenovo shop?"
+      expect_text: lenovo
       expect: [signboard, shop sign, shop front]
     - q: "Where's the nearest metro station?"
       refuse: true
     - q: "ಕಲ್ಯಾಣ್ ಜ್ಯುವೆಲ್ಲರ್ಸ್ ಎಲ್ಲಿತ್ತು?"  # Kannada: where was Kalyan Jewellers?
+      expect_text: kalyan
       expect: [signboard, shop sign, shop front]
     - q: "லீவைஸ் கடை எங்கே இருந்தது?"  # Tamil: where was the Levi's shop?
+      expect_text: levi
       expect: [signboard, shop sign, shop front]
