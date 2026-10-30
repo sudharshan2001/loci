@@ -128,7 +128,7 @@ def tidy_objects(objects: list[dict], exclude: list[str]) -> list[dict]:
             continue
         o = dict(o)
         if label.endswith(" sign") and label not in SIGN_LABELS:
-            o.update(label="signboard", aliases=[])
+            o.update(label="signboard", aliases=[a for a in o.get("aliases", []) if not a.endswith(" sign")])
         if _is_junk_text(o.get("text")):
             o.update(text=None, text_english=None)
         kept.append(o)

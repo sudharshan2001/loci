@@ -83,6 +83,14 @@ def singular(word: str) -> str:
     return w
 
 
+DIRECT_MATCH = 101  # above any fuzzy score
+
+
+def yours(name: str | None) -> str | None:
+    """Where a walk started, as said to the user: the owner's "my office" is "your office" in an answer."""
+    return f"your {name[3:]}" if name and name.lower().startswith("my ") else name
+
+
 def norm(phrase: str) -> str:
     return " ".join(singular(w) for w in phrase.lower().split())
 
@@ -160,9 +168,19 @@ class Memory:
         """Fuzzy + synonym match over labels, aliases and sign text, across all sessions."""
         terms = expand_query(query)
         rows = self.con.execute("SELECT * FROM objects").fetchall()
+        things_on = {
+            (r["session_id"], r["object"]): r["n"]
+            for r in self.con.execute(
+                "SELECT session_id, object, COUNT(*) n FROM relations WHERE relation IN ('on','inside') "
+                "GROUP BY session_id, object"
+            )
+        }
+        asked = set(norm(query.strip()).split())
         scored = []
+        seen_as: dict[tuple[str, str], str] = {}
         for r in rows:
-            names = [r["label"], *json.loads(r["aliases"] or "[]")]
+            aliases = json.loads(r["aliases"] or "[]")
+            names = [r["label"], *aliases]
             texts = [t for t in (r["text"], r["text_english"]) if t]
             # whole-word similarity: typos and "plant" vs "potted plant" match, "keys" vs "keyboard" does not;
             # aliases rank a little below the main label
@@ -190,9 +208,16 @@ class Memory:
                 s_name = max(s_name, 82)
             s_text = max((fuzz.WRatio(query.lower(), t.lower()) for t in texts), default=0)
             score = max(s_name, s_text)
+            # the words asked for are in what vision called this very object: above any synonym of its kind
+            direct = next((a for a in aliases if asked and asked <= set(norm(a).split())), None)
+            if direct:
+                score = DIRECT_MATCH
+                seen_as[(r["session_id"], r["object_id"])] = direct
             if score >= 80:
                 scored.append((score, r))
-        scored.sort(key=lambda x: (-x[0], -x[1]["last_seen"]))
+        scored.sort(
+            key=lambda x: (-x[0], -things_on.get((x[1]["session_id"], x[1]["object_id"]), 0), -x[1]["last_seen"])
+        )
         # at most 3 per label in each capture; labels then captures take turns, so a related kind ("fruit stand"
         # for "coconut stall") or a short capture is not crowded out by a long walk with many objects of one label
         per_label: dict[tuple[str, str], int] = {}
@@ -206,7 +231,7 @@ class Memory:
                 session_turn = per_session.get(r["session_id"], 0)
                 per_session[r["session_id"]] = session_turn + 1
                 varied.append((label_turn, session_turn, sc, r))
-        varied.sort(key=lambda x: (x[0], x[1], -x[2], -x[3]["last_seen"]))
+        varied.sort(key=lambda x: (x[2] < DIRECT_MATCH, x[0], x[1], -x[2], -x[3]["last_seen"]))
         scored = [(sc, r) for _, _, sc, r in varied]
         return [
             {
@@ -220,6 +245,8 @@ class Memory:
                 "last_seen": fmt_time(r["last_seen"]),
                 "confidence": r["confidence"],
                 "match": round(s, 1),
+                **({"seen_as": a} if (a := seen_as.get((r["session_id"], r["object_id"]))) else {}),
+                **({"things_on": n} if (n := things_on.get((r["session_id"], r["object_id"]))) else {}),
             }
             for s, r in scored[:limit]
         ]
@@ -386,7 +413,7 @@ class Memory:
         rows = self.con.execute(
             "SELECT session_id, scene, captured_at, start_name FROM sessions ORDER BY captured_at"
         ).fetchall()
-        return [dict(r) for r in rows]
+        return [{**dict(r), "start_name": yours(r["start_name"])} for r in rows]
 
     def what_changed(self, session_a: str, session_b: str) -> dict[str, Any]:
         """Differences from capture a (earlier) to capture b (later): added, removed, moved, state changes.
@@ -471,7 +498,7 @@ class Memory:
                 "SELECT start_name FROM sessions WHERE session_id=?", (b["session_id"],)
             ).fetchone()
             return {
-                "from": start["start_name"] or "the start of the walk",
+                "from": yours(start["start_name"]) or "the start of the walk",
                 "to": to_id,
                 "walk_m": b["distance_along_walk_m"],
                 "direction": "the way you walked",

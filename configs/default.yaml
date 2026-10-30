@@ -60,8 +60,22 @@ attributes:
   # per scene: observations asked per object, labels not checked, and a time budget (s) for careful second
   # looks (null = escalate each unsure answer right away). A 6-min walk has ~800 signs; the careful look is ~10x
   # slower than the quick one, so long walks get a quick pass over everything, then second looks by priority.
-  home: {per_object: 2, skip: [], second_budget_s: null}
-  street: {per_object: 1, skip: [street lamp], second_budget_s: 1800}
+  home:
+    per_object: 2
+    skip: []
+    second_budget_s: null
+    describe: all  # colour and everyday name, so "the purple bucket" is found without looking again
+    describe_skip: [door, window, socket, outlet, switch]
+  street:
+    per_object: 1
+    skip: [street lamp]
+    second_budget_s: 1800
+    describe: [stall, stand, cart, shop front, kiosk]  # what they sell: "the coconut stall"
+    describe_skip: []
+
+associate:
+  # a fast indoor walk moves things up to a metre between neighbouring keyframes
+  home: {adjacent_gap_s: 0.8, adjacent_dist_m: 1.2}
 
 demo:
   # serve verified answers from data/answer_cache.json (fill it with `loci warm eval/questions.yaml`)

@@ -58,7 +58,12 @@ def score(item: dict, ans: dict, mem: Memory) -> tuple[bool, str]:
     exp = item.get("expect") or []
     if not exp:
         return True, "no expectation (manual check)"
-    hit = any(fuzz.WRatio(e, lab) >= 85 for e in exp for lab in labels)
+    # a name vision gave the answered object counts too ("fruit stand" seen as "coconut stall")
+    names = list(labels)
+    for u in ids:
+        row = mem._obj(u)
+        names += json.loads(row["aliases"] or "[]") if row is not None else []
+    hit = any(fuzz.WRatio(e, lab) >= 85 for e in exp for lab in names)
     return hit, f"labels {labels}"
 
 

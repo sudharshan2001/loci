@@ -93,8 +93,8 @@ def verify(ans: dict[str, Any], mem: Memory) -> list[str]:
     for src in sources:
         for word, target in REL_RE.findall(src):
             target = target.strip()
-            if word == "on" and target in {"your left", "your right", "the left", "the right"}:
-                continue
+            if word == "on" and target.startswith(("your ", "left", "right", "the left", "the right")):
+                continue  # a side ("on the right burner"), not a thing it stands on
             if not any(word == w and fuzz.WRatio(target, lab) >= 85 for w, lab in stored):
                 if any(f"{word} the {target}" in t for t in known_texts):
                     continue

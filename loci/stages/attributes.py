@@ -13,10 +13,12 @@ from typing import Any
 
 import cv2
 import numpy as np
+from rapidfuzz import fuzz
 
 from loci.config import load_config
 from loci.providers.base import VisionChecker
 from loci.session import Session
+from loci.stages.associate import is_sign
 
 log = logging.getLogger(__name__)
 
@@ -27,6 +29,13 @@ SIGN_Q = (
     'both). Return JSON {"text": name as written, "text_english": English transliteration or translation, '
     '"readable": true/false}.'
 )
+
+DESCRIBE_Q = (
+    'This crop was detected as "{label}"; the photo may be sideways. Describe only that object, never any person. '
+    'Return JSON {{"name": two to four words a person would call it, with its main colour, e.g. "purple plastic '
+    'bucket", "sells": what is on sale if it is a stall, cart or shop, as singular nouns, e.g. ["coconut"], else []}}.'
+)
+PERSON_WORDS = {"man", "woman", "boy", "girl", "person", "people", "child", "vendor", "shopkeeper", "customer"}
 
 # keyword in the label -> question and the state keys it should return
 STATE_QS: list[tuple[tuple[str, ...], str]] = [
@@ -105,8 +114,105 @@ def settings(scene: str) -> dict[str, Any]:
         "per_object": cfg.get("per_object", 2),
         "skip": set(cfg.get("skip", [])),
         "second_budget_s": cfg.get("second_budget_s"),
+        "describe": cfg.get("describe", []),
+        "describe_skip": cfg.get("describe_skip", []),
         "min_confidence": cfg.get("min_confidence", 0.7),
     }
+
+
+def wants_description(label: str, cfg: dict[str, Any]) -> bool:
+    """Which objects get a look at what they are: "all", or those whose label has one of the given words."""
+    wanted = cfg.get("describe", [])
+    if is_sign(label) or any(k in label for k in cfg.get("describe_skip", [])):
+        return False
+    return wanted == "all" or any(k in label for k in wanted)
+
+
+def description_aliases(answer: dict) -> list[str]:
+    """Search names from a description: "purple plastic bucket"; "coconut", "coconut stall" for what a stall sells."""
+    name = str(answer.get("name") or "").lower().strip()
+    out = [name] if name and len(name.split()) <= 5 and not PERSON_WORDS & set(name.split()) else []
+    sells = answer.get("sells")
+    for good in (sells if isinstance(sells, list) else [])[:3]:
+        good = str(good).lower().strip()
+        if good and len(good.split()) <= 3 and not PERSON_WORDS & set(good.split()):
+            out += [good, f"{good} stall", f"{good} shop"]
+    return out
+
+
+def _sign_names(o: dict) -> set[str]:
+    keys = ("".join(filter(str.isalnum, t.lower())) for t in (o.get("text"), o.get("text_english")) if t)
+    return {k for k in keys if len(k) >= 3}
+
+
+def _same_shop(a: set[str], b: set[str]) -> bool:
+    return any(fuzz.ratio(x, y) >= 88 or (min(len(x), len(y)) >= 4 and (x in y or y in x)) for x in a for y in b)
+
+
+def _weighted_median(values: list[float], weights: list[int]) -> float:
+    order = np.argsort(values)
+    cum = np.cumsum(np.asarray(weights, float)[order])
+    return float(np.asarray(values, float)[order][np.searchsorted(cum, cum[-1] / 2)])
+
+
+def merge_same_signs(objects: list[dict], radius_m: float = 40.0) -> list[dict]:
+    """Boards that read the same within radius_m along the walk are one shop.
+
+    Association keeps boards apart before they are read, so a shop seen from far and near is many objects: BIBA was
+    17, at 173 to 189 m, and Louis Philippe on both sides of the road. Once read, they become one, placed by the
+    weight of their sightings, showing the clearest reading as proof. Other readings stay searchable as aliases.
+    """
+    signs = sorted(
+        (o for o in objects if is_sign(o["label"]) and _sign_names(o) and o.get("distance_along_walk_m") is not None),
+        key=lambda o: o["distance_along_walk_m"],
+    )
+    groups: list[list[dict]] = []
+    for o in signs:
+        names = _sign_names(o)
+        d = o["distance_along_walk_m"]
+        for g in groups:
+            if any(abs(m["distance_along_walk_m"] - d) <= radius_m and _same_shop(_sign_names(m), names) for m in g):
+                g.append(o)
+                break
+        else:
+            groups.append([o])
+
+    gone = set()
+    for g in groups:
+        if len(g) < 2:
+            continue
+        keep = max(g, key=lambda m: m["n_obs"])
+        clearest = max(g, key=lambda m: m.get("attribute_confidence") or 0)
+        weights = [m["n_obs"] for m in g]
+        readings = {t for m in g for t in (m.get("text"), m.get("text_english")) if t}
+        centroid = [_weighted_median([m["centroid"][i] for m in g], weights) for i in range(3)]
+        sides = [m.get("side") for m in g]
+        side = max(set(sides), key=lambda s: sum(w for w, x in zip(weights, sides, strict=True) if x == s))
+        dist = round(_weighted_median([m["distance_along_walk_m"] for m in g], weights), 1)
+        keep.update(
+            obs_ids=sorted({i for m in g for i in m["obs_ids"]}),
+            n_obs=sum(weights),
+            first_seen=min(m["first_seen"] for m in g),
+            last_seen=max(m["last_seen"] for m in g),
+            confidence=max(m["confidence"] for m in g),
+            centroid=centroid,
+            box_min=[min(a, b) for a, b in zip(keep["box_min"], centroid, strict=True)],
+            box_max=[max(a, b) for a, b in zip(keep["box_max"], centroid, strict=True)],
+            text=clearest.get("text"),
+            text_english=clearest.get("text_english"),
+            attribute_confidence=clearest.get("attribute_confidence"),
+            attribute_obs=clearest.get("attribute_obs"),
+            best_obs=clearest.get("attribute_obs") or clearest["best_obs"],
+            aliases=sorted(
+                {*keep.get("aliases", []), *readings} - {clearest.get("text"), clearest.get("text_english")}
+            ),
+            distance_along_walk_m=dist,
+            side=side,
+            passed_at=round(_weighted_median([m["passed_at"] for m in g], weights), 2),
+            location_text=f"on your {side}, about {dist:.0f} m into the walk",
+        )
+        gone |= {id(m) for m in g if m is not keep}
+    return [o for o in objects if id(o) not in gone]
 
 
 def targets(session: Session) -> list[tuple[dict, str, str, list[dict]]]:
@@ -115,12 +221,14 @@ def targets(session: Session) -> list[tuple[dict, str, str, list[dict]]]:
     cfg = settings(scene)
     obs = {o["obs_id"]: o for o in session.read(session.observations)}
     out = []
+    exclude = load_config()["scenes"][scene].get("exclude_from_memory", [])
     for o in session.read(session.objects):
+        ranked = sorted((obs[i] for i in o["obs_ids"]), key=lambda m: -m["quality"])
         q = question_for(o["label"], scene)
-        if q is None or o["label"] in cfg["skip"]:
-            continue
-        cands = sorted((obs[i] for i in o["obs_ids"]), key=lambda m: -m["quality"])[: cfg["per_object"]]
-        out.append((o, q[0], q[1], cands))
+        if q is not None and o["label"] not in cfg["skip"]:
+            out.append((o, q[0], q[1], ranked[: cfg["per_object"]]))
+        if o["label"] not in exclude and wants_description(o["label"], cfg):
+            out.append((o, "describe", DESCRIBE_Q.format(label=o["label"]), ranked[:1]))
     return out
 
 
@@ -145,6 +253,8 @@ def second_look_queue(
     settled: list[np.ndarray] = []
     unsure = []
     for o, kind, question, cands in work:
+        if kind == "describe":
+            continue
         for ob in cands:
             entry = cache.get(f"{ob['obs_id']}|{kind}")
             if entry is None or len(entry["attempts"]) >= 2 or entry["confidence"] >= min_confidence:
@@ -203,7 +313,7 @@ def run(session: Session, checker: VisionChecker | None, more_second_looks: bool
         for i, (_, kind, question, cands) in enumerate(work):
             for ob in cands:
                 if f"{ob['obs_id']}|{kind}" not in cache:
-                    ask(ob, kind, question, "auto" if budget is None else "quick")
+                    ask(ob, kind, question, "auto" if budget is None and kind != "describe" else "quick")
             if i % 25 == 0:
                 log.info("attributes: %d/%d objects checked", i, len(work))
         if budget is not None:
@@ -226,6 +336,9 @@ def run(session: Session, checker: VisionChecker | None, more_second_looks: bool
         if not rows:
             continue
         best = max(rows, key=lambda r: r["confidence"])
+        if kind == "describe":
+            o["aliases"] = sorted({*o.get("aliases", []), *description_aliases(best["answer"])})
+            continue
         if kind == "sign":
             o["text"] = best["answer"].get("text")
             o["text_english"] = best["answer"].get("text_english")
@@ -243,6 +356,10 @@ def run(session: Session, checker: VisionChecker | None, more_second_looks: bool
             best["confidence"],
             "+".join(best["attempts"]),
         )
+    if session.scene() == "street":
+        n = len(objects)
+        objects = merge_same_signs(objects)
+        log.info("signs that read the same: %d objects -> %d", n, len(objects))
     session.write(session.objects, objects)
     session.write(session.attributes, results)
     return results

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import time
 from typing import Any
 
@@ -41,6 +42,10 @@ start_name (e.g. the user's office). For "how far from my office/start", call ro
 - Street answers: give the shop name as read from the sign, the side (on your left/right), the distance into \
 the walk in metres, and the time.
 - Use the location_text words from the tools for where things are (on the desk, left of the monitor ...).
+- A search result with seen_as was seen to be that thing (a "fruit stand" seen as "coconut stall"): answer about it \
+without look. Several results seen_as the same thing: use the one seen most recently.
+- "What's on my desk/table?": take the desk with the most things_on across all captures, call objects_on on it, \
+name each kind of thing once and say which room. Do not answer from a desk with no things_on when another has some.
 - If search returns things of a related kind but not the exact name (a "street stall" or "fruit stand" when \
 asked about a coconut stall), call look on the likely candidates before deciding. Answer about the one that \
 look confirms; only say it was not seen if look rules them all out.
@@ -50,6 +55,7 @@ Name a handful in walk order with side and distance, say which walk it was, and 
 of them (Allen Solly and Louis Philippe sell clothes); give each one's name, side and distance.
 - If nothing matching was seen, say so plainly: "I haven't seen a <thing> in any capture." and set \
 object_id to null.
+- Write for a person: dates like "Oct 28", no ids, no field names (say "the burner was not lit", not burner_lit).
 - Keep the answer to one or two short spoken-style sentences, in the same language as the question (answer a \
 Kannada, Tamil or Hindi question in that language; keep shop names as written on the sign).
 
@@ -63,6 +69,19 @@ SCRIPTS = {
     "Telugu": (0x0C00, 0x0C7F),
     "Kannada": (0x0C80, 0x0CFF),
 }
+
+
+MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+ISO_DATE = re.compile(r"\b\d{4}-(\d{2})-(\d{2})(?:T\d{2}:\d{2}(?::\d{2})?(?:[+-]\d{2}:\d{2}|Z)?)?")
+OBJECT_ID = re.compile(r"[;,]?\s*\(?\b[a-z0-9_]+:[a-z0-9]+(?:_[a-z0-9]+)+\b\)?")
+FIELD_NAME = re.compile(r"\b[a-z]+(?:_[a-z0-9]+)+\b")
+
+
+def clean_answer(text: str) -> str:
+    """What is said to a person: no raw timestamps, ids or field names, even when the model copies them from a tool."""
+    text = ISO_DATE.sub(lambda m: f"{MONTHS[int(m[1]) - 1]} {int(m[2])}", text)
+    text = OBJECT_ID.sub("", text)
+    return FIELD_NAME.sub(lambda m: m[0].replace("_", " "), text).strip()
 
 
 def script_counts(text: str) -> dict[str, int]:
@@ -391,6 +410,7 @@ def ask(
             problems = ["agent did not produce a final answer"]
         else:
             ans = complete(ans, mem)
+            ans["answer"] = clean_answer(str(ans.get("answer") or ""))
             problems = verify(ans, mem) + language_problems(question, str(ans.get("answer") or ""))
             if not problems:
                 ans.update(

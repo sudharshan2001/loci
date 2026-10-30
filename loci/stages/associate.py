@@ -13,6 +13,7 @@ from typing import Any
 
 import numpy as np
 
+from loci.config import load_config
 from loci.session import Session
 
 log = logging.getLogger(__name__)
@@ -110,8 +111,43 @@ def merge_overlapping(objs: list[_Obj]) -> list[_Obj]:
     return objs
 
 
+def merge_adjacent_views(objs: list[_Obj], max_gap_s: float, max_dist_m: float) -> list[_Obj]:
+    """Third pass: same label, seen one right after the other and never together, close by: one thing.
+
+    A fast indoor walk moves a bucket's 3D position by up to a metre between neighbouring keyframes, which is too
+    far for the size-aware test, so one bucket became five objects. Two things seen in one frame stay two.
+    """
+
+    def span(o: _Obj) -> tuple[float, float]:
+        ts = [m["t"] for m in o.members]
+        return min(ts), max(ts)
+
+    merged = True
+    while merged:
+        merged = False
+        for i, a in enumerate(objs):
+            for b in objs[i + 1 :]:
+                if is_sign(a.label) or a.keyframes & b.keyframes or not labels_compatible(a.as_match(), b.as_match()):
+                    continue
+                (a0, a1), (b0, b1) = span(a), span(b)
+                if max(a0, b0) - min(a1, b1) <= max_gap_s and np.linalg.norm(a.centroid - b.centroid) <= max_dist_m:
+                    for m in b.members:
+                        a.add(m)
+                    objs.remove(b)
+                    merged = True
+                    break
+            if merged:
+                break
+    return objs
+
+
 def associate(
-    observations: list[dict], min_dist: float = 0.25, iou_thresh: float = 0.15, single_min_score: float = 0.6
+    observations: list[dict],
+    min_dist: float = 0.25,
+    iou_thresh: float = 0.15,
+    single_min_score: float = 0.6,
+    adjacent_gap_s: float | None = None,
+    adjacent_dist_m: float = 1.2,
 ) -> list[dict[str, Any]]:
     objs: list[_Obj] = []
     for ob in sorted(observations, key=lambda o: -o["score"]):
@@ -125,20 +161,24 @@ def associate(
         else:
             best.add(ob)
     objs = merge_overlapping(objs)
+    if adjacent_gap_s is not None:
+        objs = merge_adjacent_views(objs, adjacent_gap_s, adjacent_dist_m)
     # a thing seen in one frame only needs a confident detection to count
     objs = [o for o in objs if len(o.members) > 1 or o.members[0]["score"] >= single_min_score]
 
     out = []
     counters: dict[str, int] = {}
     for o in sorted(objs, key=lambda o: min(m["t"] for m in o.members)):
-        k = counters[slug(o.label)] = counters.get(slug(o.label), 0) + 1
+        # a sign is named by reading it: an id from a brand label ("biba_store_sign_12" on Kalyan's board) misleads
+        base = "sign" if is_sign(o.label) else slug(o.label)
+        k = counters[base] = counters.get(base, 0) + 1
         ms = o.members
         best = max(ms, key=lambda m: m["quality"])
         areas = [m["area_label"] for m in ms]
         n = len(ms)
         out.append(
             {
-                "object_id": f"{slug(o.label)}_{k}",
+                "object_id": f"{base}_{k}",
                 "label": o.label,
                 "aliases": sorted(o.aliases - {o.label}),
                 "centroid": o.centroid.round(4).tolist(),
@@ -160,7 +200,12 @@ def associate(
 
 
 def run(session: Session) -> list[dict]:
-    objs = associate(session.read(session.observations))
+    cfg = load_config().get("associate", {}).get(session.scene(), {})
+    objs = associate(
+        session.read(session.observations),
+        adjacent_gap_s=cfg.get("adjacent_gap_s"),
+        adjacent_dist_m=cfg.get("adjacent_dist_m", 1.2),
+    )
     session.write(session.objects, objs)
     log.info("%s: %d objects", session.id, len(objs))
     return objs
