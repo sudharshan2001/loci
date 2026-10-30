@@ -182,3 +182,45 @@ Known issue: run-to-run variance. Questions that use `look` (coconut stall) or l
 pass") pass in one run and fail in the next, because Glimmer samples at temperature 1.0 (model card setting).
 For the live demo use the answer cache (`loci warm`); consider a lower agent temperature and majority vote on
 `look` (see improvement.md).
+
+## Oct 30–31 – street2 and home2, and the eval made stricter
+
+Own footage now: `home`, `home2` (next day), `street`, `street2` (6-minute walk from the office, 1080p, no audio).
+Eval, 35 questions: 63% -> 60% -> 80% -> **94% (33/35)**, refusals 5/5, verified on first attempt 71%, median 26.5 s,
+no cloud calls. An intermediate 94% was not real (BIBA placed on the Brand Factory board, Levi's on "Factory
+Outlets", both counted as passes by label). The eval now also requires the cited sign to read the shop's name
+(`expect_text`), and that run is the one reported here. Two scoring changes affect comparison with earlier runs: a
+name vision gave the object counts as a match, and "Are the lights on?" expects "not seen" (SAM found no lights in
+either home capture; 12 sampled `home` frames show none, `home2` frames not checked by eye).
+Failures in the last run: Tamil "where is my bag?" (refused), "Did I pass a fruit cart?" (verifier retry failed, "not
+sure"). Both have passed in earlier runs.
+
+Memory after rebuild: home 60 objects (was 93), home2 72, street 180, street2 1084, of which 411 signs with text.
+Walk path 371.9 m (was 333.9 m), 0.95–1.04 m/s in every third of the walk (was falling to 0.68 m/s).
+
+What changed:
+- Long walks: chunks are joined by rotation and translation only. Scaling at each join shrank the late walk.
+- Long walks: quick read of every sign, then budgeted second looks (30 min) by priority. Attributes on street2 went
+  from ~8 h to about 85 min, including interrupted attempts.
+- Two boards in one frame stay separate; after reading, boards with the same name within 40 m become one shop, placed
+  by the weight of their sightings. Words any shop uses ("OUTLET") do not count as a name. BIBA: 17 objects -> 1.
+- Build time description (~6 s per object): colour and everyday name, and what a stall sells, stored as aliases.
+  Finds "purple bucket" and the sideways-filmed coconut cart directly, instead of hoping `look` picks the right one.
+- Home: neighbouring views of one thing merge (0.8 s, 1.2 m, never seen together). One bucket was 5 objects.
+- Search: direct visual matches rank first; the desk with the most on it comes first. Answers lose raw timestamps,
+  ids and field names. Verifier: "on your left" is not the state "on"; "on the right burner" is not a relation.
+- Street memory holds no belongings of passers-by and no vehicles; sign ids carry no brand; readings under 3
+  characters are dropped; answers are forced into the question's language.
+
+Known issues:
+- Home positions shift by up to ~1 m between neighbouring frames on a fast walk. Merging hides the duplicates, not the
+  error, so "what moved" lists furniture that did not move. Only state changes in that answer are dependable.
+- Walk distances are not checked against the real walk. M6's tape-measured distance is still open.
+- Room names are unreliable: the desk is "kitchen" in `home2`, so answers can say "on the desk in the kitchen".
+- 216 of the 617 sign objects with text before merging were partial readings Glimmer marked unreadable. Wrong names
+  still appear in the shop list ("Vangevar" beside "Manyavar", "Alien Solly").
+- A second Kalyan board at 46 m stays separate from the shop at 144 m; not checked which is right. Times are not
+  verified in free text: one Kannada answer gave 1:41 for a sighting at 0:41.
+- Run-to-run variance remains (temperature 1.0, model card setting). A question can pass one run and fail the next.
+- Home alerts repeat ("window open" twice) and include low-value ones (a door left open).
+- A full street2 rebuild is 1–2 h on one GPU. It is built after the walk, not in real time.
