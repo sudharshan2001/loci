@@ -18,6 +18,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import requests
 
 from loci.config import load_config, repo_path
@@ -109,8 +110,20 @@ def glimmer_server(log_path: Path | None = None) -> Iterator[str]:
             logf.close()
 
 
-def image_part(path: Path) -> dict[str, Any]:
-    b64 = base64.b64encode(Path(path).read_bytes()).decode()
+def image_part(path: Path, max_side: int = 1024) -> dict[str, Any]:
+    """An image for the chat API, downscaled so the long side is at most max_side.
+
+    Full-HD frames cost ~2.7k tokens each: 8 of them overflow the 16k context (seen on a 1080p walk).
+    """
+    import cv2
+
+    data = Path(path).read_bytes()
+    img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+    if img is not None and max(img.shape[:2]) > max_side:
+        f = max_side / max(img.shape[:2])
+        img = cv2.resize(img, None, fx=f, fy=f, interpolation=cv2.INTER_AREA)
+        data = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 90])[1].tobytes()
+    b64 = base64.b64encode(data).decode()
     return {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
 
 
