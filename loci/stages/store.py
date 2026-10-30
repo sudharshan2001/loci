@@ -151,6 +151,8 @@ def run(session: Session, db_path: Path) -> dict:
     dropped_obs = {i for o in all_objects if o["object_id"] not in kept for i in o["obs_ids"]}
     obs = [b for b in session.read(session.observations) if b["obs_id"] not in dropped_obs]
     obj_of = {oid: o["object_id"] for o in objects for oid in o["obs_ids"]}
+    label_of = {oid: o["label"] for o in objects for oid in o["obs_ids"]}
+    obs = [{**b, "label": label_of.get(b["obs_id"], b["label"])} for b in obs]  # same name as their object
     rels_path = session.root / "relations.json"
     rels = session.read(rels_path) if rels_path.exists() else []
     rels = [r for r in rels if r["subject"] in kept and r["object"] in kept]

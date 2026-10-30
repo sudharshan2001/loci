@@ -137,7 +137,7 @@ def run(
         if ci > 0:  # map this chunk into the first chunk's frame using the frames it shares with the previous
             skip = ranges[ci - 1][1] - a
             ref = np.concatenate(parts["poses"])[a : a + skip]
-            sc, R, t = align(ref, c["poses"][:skip])
+            sc, R, t = align(ref, c["poses"][:skip], keep_scale=True)
             c["poses"] = transform_poses(c["poses"], sc, R, t)
             c["pts3d"] = transform_points(c["pts3d"], sc, R, t)
             c["depth"] = c["depth"] * sc

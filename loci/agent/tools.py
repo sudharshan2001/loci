@@ -193,20 +193,21 @@ class Memory:
             if score >= 80:
                 scored.append((score, r))
         scored.sort(key=lambda x: (-x[0], -x[1]["last_seen"]))
-        # at most 3 per label in each capture, and captures take turns, so a related kind ("fruit stand" for
-        # "coconut stall") or a short capture is not crowded out by a long walk with many objects of one label
+        # at most 3 per label in each capture; labels then captures take turns, so a related kind ("fruit stand"
+        # for "coconut stall") or a short capture is not crowded out by a long walk with many objects of one label
         per_label: dict[tuple[str, str], int] = {}
         per_session: dict[str, int] = {}
         varied = []
         for sc, r in scored:
             key = (r["session_id"], r["label"])
-            per_label[key] = per_label.get(key, 0) + 1
-            if per_label[key] <= 3:
-                turn = per_session.get(r["session_id"], 0)
-                per_session[r["session_id"]] = turn + 1
-                varied.append((turn, sc, r))
-        varied.sort(key=lambda x: (x[0], -x[1], -x[2]["last_seen"]))
-        scored = [(sc, r) for _, sc, r in varied]
+            label_turn = per_label.get(key, 0)
+            per_label[key] = label_turn + 1
+            if label_turn < 3:
+                session_turn = per_session.get(r["session_id"], 0)
+                per_session[r["session_id"]] = session_turn + 1
+                varied.append((label_turn, session_turn, sc, r))
+        varied.sort(key=lambda x: (x[0], x[1], -x[2], -x[3]["last_seen"]))
+        scored = [(sc, r) for _, _, sc, r in varied]
         return [
             {
                 "id": uid(r),
@@ -408,10 +409,11 @@ class Memory:
             "to": session_b,
             "from_captured_at": self._captured(session_a),
             "to_captured_at": self._captured(session_b),
-            "added": [],
-            "removed": [],
-            "moved": [],
+            # most telling first: long added/removed lists can run past what the agent is shown
             "state_changed": [],
+            "moved": [],
+            "removed": [],
+            "added": [],
         }
         for key in sorted(set(a) | set(b)):
             ra, rb = a.get(key, []), b.get(key, [])

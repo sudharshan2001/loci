@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import cv2
+import numpy as np
 
 from loci.config import load_config
 from loci.providers.base import VisionChecker
@@ -136,7 +137,34 @@ def second_priority(o: dict, ob: dict) -> float:
     return len(o["obs_ids"]) * min(x1 - x0, y1 - y0)
 
 
-def run(session: Session, checker: VisionChecker | None) -> list[dict]:
+def second_look_queue(
+    work: list[tuple[dict, str, str, list[dict]]], cache: dict[str, dict], min_confidence: float, radius_m: float = 3.0
+) -> list[tuple[dict, str, str]]:
+    """Unsure answers worth a careful look, best first. Long walks see one board from many spots, so a sign within
+    radius_m of one already read with confidence, or of one earlier in the queue, is the same board: skip it."""
+    settled: list[np.ndarray] = []
+    unsure = []
+    for o, kind, question, cands in work:
+        for ob in cands:
+            entry = cache.get(f"{ob['obs_id']}|{kind}")
+            if entry is None or len(entry["attempts"]) >= 2 or entry["confidence"] >= min_confidence:
+                if entry is not None and kind == "sign" and entry["confidence"] >= min_confidence:
+                    settled.append(np.asarray(ob["centroid"], float))
+                continue
+            unsure.append((second_priority(o, ob), ob, kind, question))
+    unsure.sort(key=lambda u: -u[0])
+    queue = []
+    for _, ob, kind, question in unsure:
+        c = np.asarray(ob["centroid"], float)
+        if kind == "sign" and any(np.linalg.norm(c - x) < radius_m for x in settled):
+            continue
+        if kind == "sign":
+            settled.append(c)
+        queue.append((ob, kind, question))
+    return queue
+
+
+def run(session: Session, checker: VisionChecker | None, more_second_looks: bool = False) -> list[dict]:
     """Answers are cached per (observation, kind), so re-running after association changes is free.
 
     Without a second-look budget each check escalates on its own (quick look, careful look if unsure). With
@@ -168,6 +196,8 @@ def run(session: Session, checker: VisionChecker | None) -> list[dict]:
         }
         session.write(cache_path, cache)
 
+    if more_second_looks and budget is None:
+        budget = 1800
     if checker is not None:
         n = sum(len(c) for *_, c in work)
         for i, (_, kind, question, cands) in enumerate(work):
@@ -177,17 +207,10 @@ def run(session: Session, checker: VisionChecker | None) -> list[dict]:
             if i % 25 == 0:
                 log.info("attributes: %d/%d objects checked", i, len(work))
         if budget is not None:
-            unsure = [
-                (second_priority(o, ob), ob, kind, question)
-                for o, kind, question, cands in work
-                for ob in cands
-                if cache[f"{ob['obs_id']}|{kind}"]["confidence"] < cfg["min_confidence"]
-                and len(cache[f"{ob['obs_id']}|{kind}"]["attempts"]) < 2
-            ]
-            unsure.sort(key=lambda u: -u[0])
+            unsure = second_look_queue(work, cache, cfg["min_confidence"])
             t0 = time.perf_counter()
             done = 0
-            for _, ob, kind, question in unsure:
+            for ob, kind, question in unsure:
                 if time.perf_counter() - t0 > budget:
                     break
                 ask(ob, kind, question, "second")

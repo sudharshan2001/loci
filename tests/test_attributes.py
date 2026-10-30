@@ -38,7 +38,14 @@ def test_quick_pass_then_budgeted_second_looks(tmp_path, monkeypatch) -> None:
     cv2.imwrite(str(s.keyframes_dir / "0000.jpg"), np.zeros((100, 100, 3), np.uint8))
     s.meta.write_text(json.dumps({"scene": "street"}))
     obs = [
-        {"obs_id": f"obs_{i}", "keyframe": 0, "t": float(i), "bbox": [0, 0, 10 * (i + 1), 10 * (i + 1)], "quality": 1}
+        {
+            "obs_id": f"obs_{i}",
+            "keyframe": 0,
+            "t": float(i),
+            "bbox": [0, 0, 10 * (i + 1), 10 * (i + 1)],
+            "quality": 1,
+            "centroid": [50.0 * i, 0.0, 0.0],
+        }
         for i in range(3)
     ]
     s.observations.write_text(json.dumps(obs))
@@ -74,3 +81,17 @@ def test_quick_pass_then_budgeted_second_looks(tmp_path, monkeypatch) -> None:
     assert best["sign_0"]["confidence"] == 0.4 and "lamp_1" not in best
     assert best["sign_0"]["attempts"] == ["glimmer:low", "glimmer:low"]
     assert A.pending(s) == 0
+
+
+def test_second_looks_skip_boards_already_read_nearby() -> None:
+    from loci.stages.attributes import second_look_queue
+
+    def ob(i, x):
+        return {"obs_id": f"o{i}", "bbox": [0, 0, 50, 50], "centroid": [x, 0.0, 0.0]}
+
+    work = [({"obs_ids": ["a"]}, "sign", "q", [ob(i, x)]) for i, x in enumerate([0.0, 1.0, 2.0, 20.0, 21.0])]
+    entry = {"attempts": ["glimmer:low"], "confidence": 0.3}
+    cache = {f"o{i}|sign": dict(entry) for i in range(5)}
+    cache["o0|sign"]["confidence"] = 0.9  # read: the two boards within 3 m of it are the same one
+    queue = second_look_queue(work, cache, 0.7)
+    assert [q[0]["obs_id"] for q in queue] == ["o3"]  # o4 is within 3 m of o3

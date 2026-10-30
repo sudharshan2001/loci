@@ -57,3 +57,15 @@ def test_overlapping_partial_views_merge_and_weak_singletons_drop() -> None:
     ]
     objs = associate(obs)
     assert [o["label"] for o in objs] == ["bed"] and objs[0]["n_obs"] == 2
+
+
+def test_two_boards_in_one_frame_stay_separate() -> None:
+    a = {**_ob("o1", "signboard", [0, 0, 0], half=1.0), "keyframe": 5}
+    b = {**_ob("o2", "signboard", [0.5, 0, 0], half=1.0), "keyframe": 5}
+    c = {**_ob("o3", "signboard", [0.1, 0, 0], half=1.0), "keyframe": 6}
+    objs = associate([a, b, c])
+    assert sorted(len(o["obs_ids"]) for o in objs) == [1, 2]
+    # other things seen twice in a frame (partial views) still merge
+    d = {**_ob("o4", "desk", [0, 0, 0], half=1.0), "keyframe": 5}
+    e = {**_ob("o5", "desk", [0.5, 0, 0], half=1.0), "keyframe": 5}
+    assert len(associate([d, e])) == 1

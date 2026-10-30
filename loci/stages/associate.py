@@ -25,6 +25,10 @@ def box_iou(a_min, a_max, b_min, b_max) -> float:
     return float(inter / (va + vb - inter)) if va + vb - inter > 0 else 0.0
 
 
+def is_sign(label: str) -> bool:
+    return label.endswith("sign") or label.endswith("signboard")
+
+
 def labels_compatible(a: dict, b: dict) -> bool:
     la = {a["label"], *a.get("aliases", [])}
     lb = {b["label"], *b.get("aliases", [])}
@@ -38,6 +42,7 @@ def slug(label: str) -> str:
 class _Obj:
     def __init__(self, ob: dict) -> None:
         self.members = [ob]
+        self.keyframes = {ob.get("keyframe")}
         self.label = ob["label"]
         self.aliases: set[str] = set(ob.get("aliases", []))
         self._update()
@@ -60,6 +65,10 @@ class _Obj:
         """Return a distance score if ob belongs to this object, else None."""
         if not labels_compatible(self.as_match(), ob):
             return None
+        # two boards in one frame are two boards: without this, boxes grow along a row of shops until one "sign"
+        # holds a dozen of them and only one is ever read
+        if is_sign(self.label) and ob.get("keyframe") in self.keyframes:
+            return None
         oc = np.array(ob["centroid"])
         d = float(np.linalg.norm(oc - self.centroid))
         size = float(np.linalg.norm(self.half) + np.linalg.norm((np.array(ob["box_max"]) - ob["box_min"]) / 2))
@@ -71,6 +80,7 @@ class _Obj:
 
     def add(self, ob: dict) -> None:
         self.members.append(ob)
+        self.keyframes.add(ob.get("keyframe"))
         self.aliases |= set(ob.get("aliases", []))
         if ob["label"] != self.label:
             self.aliases.add(ob["label"])
@@ -87,6 +97,8 @@ def merge_overlapping(objs: list[_Obj]) -> list[_Obj]:
         merged = False
         for i, a in enumerate(objs):
             for b in objs[i + 1 :]:
+                if is_sign(a.label) and a.keyframes & b.keyframes:
+                    continue
                 if labels_compatible(a.as_match(), b.as_match()) and box_iou(a.lo, a.hi, b.lo, b.hi) > 0.05:
                     for m in b.members:
                         a.add(m)

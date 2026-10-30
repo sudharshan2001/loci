@@ -35,17 +35,21 @@ def mean_rotation(Rs: np.ndarray) -> np.ndarray:
     return R
 
 
-def align(ref_poses: np.ndarray, cur_poses: np.ndarray) -> tuple[float, np.ndarray, np.ndarray]:
+def align(
+    ref_poses: np.ndarray, cur_poses: np.ndarray, keep_scale: bool = False
+) -> tuple[float, np.ndarray, np.ndarray]:
     """(s, R, t) mapping the current chunk's frame into the reference frame, from the same cameras' poses.
 
-    ref_poses and cur_poses: (k, 4, 4) cam-to-world poses of the shared frames in each frame.
+    ref_poses and cur_poses: (k, 4, 4) cam-to-world poses of the shared frames in each frame. keep_scale: s = 1.
+    Both chunks are already metric, and a scale from a few metres of shared path is noise (on a 6-minute walk it
+    shrank the last chunks by a third, while their own metric scale gave a steady walking speed).
     """
     R = mean_rotation(np.einsum("kij,klj->kil", ref_poses[:, :3, :3], cur_poses[:, :3, :3]))
     c_ref, c_cur = ref_poses[:, :3, 3], cur_poses[:, :3, 3]
     a, b = c_ref - c_ref.mean(0), (c_cur - c_cur.mean(0)) @ R.T
     spread = float(np.sqrt((b**2).sum()))
     s = float(np.sqrt((a**2).sum()) / spread) if spread > 0.05 else 1.0
-    s = float(np.clip(s, 0.5, 2.0))  # both chunks are metric: only modest scale disagreement is plausible
+    s = 1.0 if keep_scale else float(np.clip(s, 0.5, 2.0))  # both metric: only modest disagreement is plausible
     t = c_ref.mean(0) - s * (R @ c_cur.mean(0))
     return s, R, t
 

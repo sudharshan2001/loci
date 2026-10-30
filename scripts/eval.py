@@ -21,7 +21,7 @@ import yaml
 from rapidfuzz import fuzz
 
 from loci.agent.agent import ask
-from loci.agent.tools import Memory
+from loci.agent.tools import Memory, split_uid
 from loci.config import load_config, repo_path
 from loci.llm import glimmer_server
 from loci.stages.store import connect
@@ -46,6 +46,11 @@ def score(item: dict, ans: dict, mem: Memory) -> tuple[bool, str]:
         return False, "not sure (unverified)"
     ids = [oid, *(ans.get("objects") or [])] if oid else ans.get("objects") or []
     labels = [lab for lab in (label_of(mem, u) for u in ids) if lab]
+    if not labels:  # a summary without a main object: judge it by what it cites
+        for ev in ans.get("evidence") or []:
+            sid, oid_ev = split_uid(ev)
+            row = mem.con.execute("SELECT label FROM observations WHERE session_id=? AND obs_id=?", (sid, oid_ev))
+            labels += [r["label"] for r in row]
     if item.get("state"):
         st = mem.get_state(oid).get("state") or {}
         ok = all(st.get(k) == v for k, v in item["state"].items())

@@ -43,7 +43,8 @@ scenes:
     # prompt: confidence threshold. Low thresholds favour recall: a missed face is worse than extra blur.
     redact_prompts: {face: 0.3, computer screen: 0.4, phone screen: 0.4, document with text: 0.5}
     vocab: [gas stove, burner flame, pan, desk, computer monitor, keyboard, potted plant,
-            keys, wallet, charger, door, window, light, laundry pile, laundry bucket, washing machine]
+            keys, wallet, charger, door, window, light, ceiling light, tube light, lamp, laptop stand,
+            laundry pile, laundry bucket, washing machine]
   street:
     redact_prompts: {face: 0.3, license plate: 0.3}
     vocab: [shop sign, signboard, shop front, fruit stall, vegetable stall, coconut stall, bus stop, ATM, tree]

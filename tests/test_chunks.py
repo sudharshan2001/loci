@@ -34,3 +34,13 @@ def test_align_straight_walk_recovers_transform() -> None:
     assert np.allclose(back, world, atol=1e-6)
     p = np.array([[1.0, 2.0, 3.0]])
     assert np.allclose(transform_points(transform_points(p, s_inv, R_inv, t_inv), s, R, t), p, atol=1e-6)
+
+
+def test_align_keeps_metric_scale_when_asked() -> None:
+    world = np.tile(np.eye(4), (6, 1, 1))
+    world[:, 2, 3] = np.arange(6.0)
+    chunk = world.copy()
+    chunk[:, 2, 3] *= 1.5  # a noisy scale disagreement over the few shared metres
+    s, _, t = align(world, chunk, keep_scale=True)
+    assert s == 1.0
+    assert np.allclose(transform_poses(chunk, s, np.eye(3), t)[:, 2, 3].mean(), world[:, 2, 3].mean())

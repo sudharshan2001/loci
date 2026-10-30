@@ -179,18 +179,20 @@ def relations(session: str) -> None:
 
 
 @app.command()
-def attributes(session: str) -> None:
+def attributes(
+    session: str, more_second_looks: bool = typer.Option(False, help="spend the budget on unsure answers again")
+) -> None:
     """Stage 9: Glimmer reads signs and checks object states."""
     from loci.llm import glimmer_server
     from loci.providers import get_vision_checker
     from loci.stages import attributes as stage
 
     s = _session(session)
-    if stage.pending(s) == 0:
+    if stage.pending(s) == 0 and not more_second_looks:
         res = stage.run(s, None)  # everything cached: no Glimmer start
     else:
         with glimmer_server(s.root / "glimmer.log") as url:
-            res = stage.run(s, get_vision_checker(url))
+            res = stage.run(s, get_vision_checker(url), more_second_looks=more_second_looks)
     typer.echo(f"{s.id}: {len(res)} attributes")
 
 
