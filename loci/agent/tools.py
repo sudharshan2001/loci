@@ -539,9 +539,9 @@ class Memory:
                 None,
             )
             if same:
-                same["seen"] += r["n_obs"]
+                same["seen"] += r["n_obs"] or 1
             else:
-                places.append({"name": name, "row": r, "seen": r["n_obs"]})
+                places.append({"name": name, "row": r, "seen": r["n_obs"] or 1})
         out = []
         for places in walks.values():
             top = sorted(places, key=lambda p: -p["seen"])[:per_walk]
