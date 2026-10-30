@@ -35,6 +35,8 @@
       expect: [gas stove]
     - q: "என் பை எங்கே?"  # Tamil: where is my bag?
       expect: [backpack, bag, plastic bag]
+    - q: "What changed in my home since the first capture?"  # home -> home2 (stove went off)
+      note: should mention the stove (lit in the first capture, off in the second); checked by hand
 
 - clip: street.mp4
   scene: street

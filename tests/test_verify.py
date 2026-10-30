@@ -158,3 +158,18 @@ def test_evidence_from_another_capture_is_rejected(mem: Memory) -> None:
     assert any("from capture street" in p for p in verify(bad, mem))
     res = qualify_evidence([{"id": "home:tv_1", "evidence": ["obs_1"]}, {"capture": "pm", "evidence": ["obs_2"]}])
     assert res == [{"id": "home:tv_1", "evidence": ["home:obs_1"]}, {"capture": "pm", "evidence": ["pm:obs_2"]}]
+
+
+def test_multi_object_answers(mem: Memory) -> None:
+    # a change summary without a single object: evidence must exist
+    assert verify({"answer": "Your keys moved.", "object_id": None, "evidence": ["home:obs_keys_1"]}, mem) == []
+    assert verify({"answer": "x", "object_id": None, "evidence": ["home:obs_nope"]}, mem)
+    # a relation describing another listed object is fine
+    ans = {
+        "answer": "The stove was lit; your keys are on the desk.",
+        "object_id": "home:gas_stove_1",
+        "objects": ["home:keys_1"],
+        "evidence": ["home:obs_gas_stove_1"],
+        "seen_at": "0:31",
+    }
+    assert verify(ans, mem) == []

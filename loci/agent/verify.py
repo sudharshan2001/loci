@@ -33,8 +33,12 @@ def verify(ans: dict[str, Any], mem: Memory) -> list[str]:
     text = (ans.get("answer") or "").lower()
     oid = ans.get("object_id")
     if not oid:
-        if ans.get("evidence"):
-            problems.append("evidence cited without an object_id")
+        # a summary across objects (e.g. "what changed"): every cited evidence id must exist
+        for ev in ans.get("evidence") or []:
+            ev_sid, _, obs = ev.rpartition(":")
+            q = "SELECT 1 FROM observations WHERE obs_id=?" + (" AND session_id=?" if ev_sid else "")
+            if mem.con.execute(q, (obs, ev_sid) if ev_sid else (obs,)).fetchone() is None:
+                problems.append(f"evidence {ev} does not exist")
         return problems
 
     row = mem._obj(oid)
@@ -70,12 +74,20 @@ def verify(ans: dict[str, Any], mem: Memory) -> list[str]:
             problems.append("position_m is outside the object's 3D box")
 
     # relation words in location_text / answer must match stored relations
-    rels = mem.con.execute(
-        "SELECT r.relation, o.label FROM relations r JOIN objects o ON o.session_id=r.session_id "
-        "AND o.object_id=r.object WHERE r.session_id=? AND r.subject=?",
-        (sid, local),
-    ).fetchall()
-    stored = {(r["relation"].replace("_of", " of").replace("_", " "), r["label"]) for r in rels}
+    # for a multi-object answer, a relation may describe any of the listed objects
+    stored: set[tuple[str, str]] = set()
+    known_texts: list[str] = []
+    for u in related:
+        r_sid, r_local = split_uid(u)
+        for r in mem.con.execute(
+            "SELECT r.relation, o.label FROM relations r JOIN objects o ON o.session_id=r.session_id "
+            "AND o.object_id=r.object WHERE r.session_id=? AND r.subject=?",
+            (r_sid, r_local),
+        ):
+            stored.add((r["relation"].replace("_of", " of").replace("_", " "), r["label"]))
+        o = mem._obj(u)
+        if o is not None and o["location_text"]:
+            known_texts.append(o["location_text"].lower())
     # street places have no home relations; "on the right/left" there is a side, checked below
     sources = [] if row["distance_along_walk_m"] is not None else [(ans.get("location_text") or "").lower(), text]
     for src in sources:
@@ -84,7 +96,7 @@ def verify(ans: dict[str, Any], mem: Memory) -> list[str]:
             if word == "on" and target in {"your left", "your right", "the left", "the right"}:
                 continue
             if not any(word == w and fuzz.WRatio(target, lab) >= 85 for w, lab in stored):
-                if row["location_text"] and f"{word} the {target}" in row["location_text"].lower():
+                if any(f"{word} the {target}" in t for t in known_texts):
                     continue
                 problems.append(f"relation '{word} the {target}' is not in the memory")
 
