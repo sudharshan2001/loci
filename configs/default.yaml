@@ -52,6 +52,13 @@ scenes:
 track:
   min_score: 0.5
 
+attributes:
+  # per scene: observations asked per object, labels not checked, and a time budget (s) for careful second
+  # looks (null = escalate each unsure answer right away). A 6-min walk has ~800 signs; the careful look is ~10x
+  # slower than the quick one, so long walks get a quick pass over everything, then second looks by priority.
+  home: {per_object: 2, skip: [], second_budget_s: null}
+  street: {per_object: 1, skip: [street lamp], second_budget_s: 1800}
+
 demo:
   # serve verified answers from data/answer_cache.json (fill it with `loci warm eval/questions.yaml`)
   cache_answers: false

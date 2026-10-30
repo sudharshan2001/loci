@@ -7,11 +7,13 @@ timestamp of the observation it came from: answers say "as of <time>", never "no
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 from typing import Any
 
 import cv2
 
+from loci.config import load_config
 from loci.providers.base import VisionChecker
 from loci.session import Session
 
@@ -95,59 +97,112 @@ def save_crops(session: Session, ob: dict) -> dict[str, Path]:
     return paths
 
 
-def pending(session: Session, per_object: int = 2) -> int:
+def settings(scene: str) -> dict[str, Any]:
+    """Per-scene attribute budget from config (attributes.<scene>)."""
+    cfg = load_config().get("attributes", {}).get(scene, {})
+    return {
+        "per_object": cfg.get("per_object", 2),
+        "skip": set(cfg.get("skip", [])),
+        "second_budget_s": cfg.get("second_budget_s"),
+        "min_confidence": cfg.get("min_confidence", 0.7),
+    }
+
+
+def targets(session: Session) -> list[tuple[dict, str, str, list[dict]]]:
+    """(object, kind, question, observations to ask about) for every object that needs a vision check."""
+    scene = session.scene()
+    cfg = settings(scene)
+    obs = {o["obs_id"]: o for o in session.read(session.observations)}
+    out = []
+    for o in session.read(session.objects):
+        q = question_for(o["label"], scene)
+        if q is None or o["label"] in cfg["skip"]:
+            continue
+        cands = sorted((obs[i] for i in o["obs_ids"]), key=lambda m: -m["quality"])[: cfg["per_object"]]
+        out.append((o, q[0], q[1], cands))
+    return out
+
+
+def pending(session: Session) -> int:
     """How many vision checks are not yet cached (0 means no Glimmer needed)."""
     cache_path = session.root / "attr_cache.json"
     cache = session.read(cache_path) if cache_path.exists() else {}
-    obs = {o["obs_id"]: o for o in session.read(session.observations)}
-    n = 0
-    for o in session.read(session.objects):
-        q = question_for(o["label"], session.scene())
-        if q:
-            cands = sorted((obs[i] for i in o["obs_ids"]), key=lambda m: -m["quality"])[:per_object]
-            n += sum(f"{c['obs_id']}|{q[0]}" not in cache for c in cands)
-    return n
+    return sum(f"{c['obs_id']}|{kind}" not in cache for _, kind, _, cands in targets(session) for c in cands)
 
 
-def run(session: Session, checker: VisionChecker | None, per_object: int = 2) -> list[dict]:
-    """Answers are cached per (observation, kind), so re-running after association changes is free."""
-    objects = session.read(session.objects)
-    obs = {o["obs_id"]: o for o in session.read(session.observations)}
+def second_priority(o: dict, ob: dict) -> float:
+    """Which unsure answers deserve the slow second look first: things seen often and seen large."""
+    x0, y0, x1, y1 = ob["bbox"]
+    return len(o["obs_ids"]) * min(x1 - x0, y1 - y0)
+
+
+def run(session: Session, checker: VisionChecker | None) -> list[dict]:
+    """Answers are cached per (observation, kind), so re-running after association changes is free.
+
+    Without a second-look budget each check escalates on its own (quick look, careful look if unsure). With
+    one (long walks: hundreds of signs, the careful look costs ~10x the quick one), every observation gets the
+    quick look first, then the unsure ones get careful looks in priority order until the budget runs out.
+    """
+    cfg = settings(session.scene())
+    budget = cfg["second_budget_s"]
+    work = targets(session)
     cache_path = session.root / "attr_cache.json"
     cache: dict[str, dict] = session.read(cache_path) if cache_path.exists() else {}
+
+    def ask(ob: dict, kind: str, question: str, mode: str) -> None:
+        c = save_crops(session, ob)
+        ans = checker.check(c["ctx"], question, tight=c["tight"], wide=c["wide"], mode=mode)
+        key = f"{ob['obs_id']}|{kind}"
+        attempts = [*cache[key]["attempts"], *ans.attempts] if mode == "second" and key in cache else ans.attempts
+        if kind == "sign" and not ans.answer.get("readable", True):
+            ans.confidence *= 0.3
+        cache[key] = {
+            "kind": kind,
+            "obs_id": ob["obs_id"],
+            "seen_at": ob["t"],
+            "answer": ans.answer,
+            "confidence": round(ans.confidence, 3),
+            "attempts": attempts,
+            "used_cloud": ans.used_cloud,
+            "crop": str(c["ctx"].relative_to(session.root)),
+        }
+        session.write(cache_path, cache)
+
+    if checker is not None:
+        n = sum(len(c) for *_, c in work)
+        for i, (_, kind, question, cands) in enumerate(work):
+            for ob in cands:
+                if f"{ob['obs_id']}|{kind}" not in cache:
+                    ask(ob, kind, question, "auto" if budget is None else "quick")
+            if i % 25 == 0:
+                log.info("attributes: %d/%d objects checked", i, len(work))
+        if budget is not None:
+            unsure = [
+                (second_priority(o, ob), ob, kind, question)
+                for o, kind, question, cands in work
+                for ob in cands
+                if cache[f"{ob['obs_id']}|{kind}"]["confidence"] < cfg["min_confidence"]
+                and len(cache[f"{ob['obs_id']}|{kind}"]["attempts"]) < 2
+            ]
+            unsure.sort(key=lambda u: -u[0])
+            t0 = time.perf_counter()
+            done = 0
+            for _, ob, kind, question in unsure:
+                if time.perf_counter() - t0 > budget:
+                    break
+                ask(ob, kind, question, "second")
+                done += 1
+            log.info("second looks: %d of %d unsure (%d checks, budget %ds)", done, len(unsure), n, budget)
+
+    objects = session.read(session.objects)
+    by_id = {o["object_id"]: o for o in objects}
     results = []
-    for o in objects:
-        q = question_for(o["label"], session.scene())
-        if q is None:
+    for t, kind, _, cands in work:
+        o = by_id[t["object_id"]]
+        rows = [{"object_id": o["object_id"], **cache[k]} for ob in cands if (k := f"{ob['obs_id']}|{kind}") in cache]
+        if not rows:
             continue
-        kind, question = q
-        cands = sorted((obs[i] for i in o["obs_ids"]), key=lambda m: -m["quality"])[:per_object]
-        best: dict[str, Any] | None = None
-        for ob in cands:
-            key = f"{ob['obs_id']}|{kind}"
-            if key not in cache:
-                if checker is None:  # cached-only run
-                    continue
-                c = save_crops(session, ob)
-                ans = checker.check(c["ctx"], question, tight=c["tight"], wide=c["wide"])
-                if kind == "sign" and not ans.answer.get("readable", True):
-                    ans.confidence *= 0.3
-                cache[key] = {
-                    "kind": kind,
-                    "obs_id": ob["obs_id"],
-                    "seen_at": ob["t"],
-                    "answer": ans.answer,
-                    "confidence": round(ans.confidence, 3),
-                    "attempts": ans.attempts,
-                    "used_cloud": ans.used_cloud,
-                    "crop": str(c["ctx"].relative_to(session.root)),
-                }
-                session.write(cache_path, cache)
-            row = {"object_id": o["object_id"], **cache[key]}
-            if best is None or row["confidence"] > best["confidence"]:
-                best = row
-        if best is None:
-            continue
+        best = max(rows, key=lambda r: r["confidence"])
         if kind == "sign":
             o["text"] = best["answer"].get("text")
             o["text_english"] = best["answer"].get("text_english")

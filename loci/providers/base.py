@@ -30,7 +30,12 @@ class Namer(Protocol):
 
 
 class VisionChecker(Protocol):
-    def check(self, image: Path, question: str) -> VisionAnswer: ...
+    def check(
+        self, image: Path, question: str, tight: Path | None = None, wide: Path | None = None, mode: str = "auto"
+    ) -> VisionAnswer:
+        """mode: "auto" (quick look, second opinion if unsure), "quick" (first look only), "second" (only the
+        careful second opinion, for answers a quick pass left unsure)."""
+        ...
 
 
 class Transcriber(Protocol):

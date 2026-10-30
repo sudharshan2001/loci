@@ -66,10 +66,15 @@ class GlimmerVisionChecker:
         out = chat_json(self.base_url, content, strength=strength)
         return out if isinstance(out, dict) else {"answer": out, "confidence": 0.0}
 
-    def check(self, image: Path, question: str, tight: Path | None = None, wide: Path | None = None) -> VisionAnswer:
-        ans = self._ask([image], question, "low")
-        attempts = ["glimmer:low"]
-        if float(ans.get("confidence", 0)) < self.min_confidence:
+    def check(
+        self, image: Path, question: str, tight: Path | None = None, wide: Path | None = None, mode: str = "auto"
+    ) -> VisionAnswer:
+        ans: dict[str, Any] = {}
+        attempts: list[str] = []
+        if mode != "second":
+            ans = self._ask([image], question, "low")
+            attempts.append("glimmer:low")
+        if mode == "second" or (mode == "auto" and float(ans.get("confidence", 0)) < self.min_confidence):
             crops = [p for p in (tight, image, wide) if p is not None]
             ans = self._ask(crops, question + " The images show the same object at different crops.", "high")
             attempts.append("glimmer:high")
