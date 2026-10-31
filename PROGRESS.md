@@ -215,7 +215,9 @@ What changed:
 Known issues:
 - Home positions shift by up to ~1 m between neighbouring frames on a fast walk. Merging hides the duplicates, not the
   error, so "what moved" lists furniture that did not move. Only state changes in that answer are dependable.
-- Walk distances are not checked against the real walk. M6's tape-measured distance is still open.
+- Metric scale, M6 check against the developer's measurements: office to Lenovo 260 m real, 278 m in Loci (+7%); desk
+  to door 1.5 m real, 1.6 m in Loci (+7%). Both within the ~10% limit. Only one distance of each kind was checked, and
+  the home one does not rule out the ~1 m shift above.
 - Room names are unreliable: the desk is "kitchen" in `home2`, so answers can say "on the desk in the kitchen".
 - 216 of the 617 sign objects with text before merging were partial readings Glimmer marked unreadable. Wrong names
   still appear in the shop list ("Vangevar" beside "Manyavar", "Alien Solly").
