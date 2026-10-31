@@ -46,6 +46,10 @@ SYNONYMS: dict[str, list[str]] = {
     "garden": ["lawn", "balcony", "terrace", "yard"],
 }
 
+# one way: "my bag" may be a backpack, but "my purse" is not a backpack
+KINDS_OF = {"bag": ["backpack", "rucksack", "school bag", "handbag", "purse", "tote bag", "duffel bag"]}
+THROWAWAY = {"plastic bag", "paper bag"}  # nobody means these by "my bag": below real bags unless asked by name
+
 COLOURS = {
     "red",
     "blue",
@@ -176,6 +180,8 @@ def expand_query(q: str) -> set[str]:
         ngroup = {norm(g) for g in group}
         if nq in ngroup or (len(core) == 1 and core[0] in ngroup):
             terms |= set(group)
+    if len(core) == 1:
+        terms |= set(KINDS_OF.get(core[0], []))
     return terms
 
 
@@ -209,6 +215,7 @@ class Memory:
             )
         }
         asked = set(norm(query.strip()).split())
+        kinds = {norm(t) for t in terms} & {norm(k) for ks in KINDS_OF.values() for k in ks}
         scored = []
         seen_as: dict[tuple[str, str], str] = {}
         same_kind: set[tuple[str, str]] = set()
@@ -244,7 +251,9 @@ class Memory:
             score = max(s_name, s_text)
             # the words asked for are in what vision called this very object: above any synonym of its kind
             direct = next((a for a in aliases if asked and asked <= set(norm(a).split())), None)
-            if asked and asked <= set(norm(r["label"]).split()):
+            if norm(r["label"]) in kinds or (
+                asked and asked <= set(norm(r["label"]).split()) and (r["label"] not in THROWAWAY or len(asked) > 1)
+            ):
                 score = LABEL_MATCH
             elif direct:
                 score = DIRECT_MATCH

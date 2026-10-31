@@ -254,6 +254,17 @@ Known issues:
   time stored for the Kalyan board at 46 m, passed at 0:41. A board seen a minute after it was passed probably mixes two
   boards, so that 46 m Kalyan is doubtful.
 - Some field wording still slips through at temperature 1.0 ("shop open true", "the street walk you did on street").
-- Tamil "my bag" refuses in some runs despite the new rule. Unnamed "shop front" entries take slots in the 40-place list.
+- Unnamed "shop front" entries take slots in the 40-place list.
 - Footage: no keys, no spoken notes (0 utterances), one plant in home and none in home2, no Sudarshan Silks. Demo
   questions 4 and 5 cannot work until the new home recording.
+
+## Oct 31 – "where is my bag?" and time per step
+
+The Tamil bag miss was not detection: the black backpack is stored (4 rows in home) and SAM tagged it. Search never
+offered it: "bag" had no link to "backpack", so the agent saw only plastic bags and a shop sign and refused. "bag" now
+looks up kinds of bag (one way, so "purse" does not find a backpack), and plastic bags rank below real bags unless asked
+for by name. Eval: **97% (34/35)**, refusals 5/5, verified on first attempt 80%, median 21.1 s, no cloud calls. The
+only fail is the laundry false fail ("I haven't seen any sign the laundry is finished", which is correct).
+
+Eval time, 836 s over 35 questions: Glimmer 792 s (95%, 164 calls), `look` 40 s, every other tool under 3 s in total.
+Generation is 757 s at 47 tok/s, about 210 tokens per call, and prompt reading 65 s, so length of reasoning is the cost.

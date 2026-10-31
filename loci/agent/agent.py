@@ -380,6 +380,7 @@ def ask(
     """Answer with tools. The first attempt reasons at low strength (fast); a verifier retry escalates."""
     t0 = time.perf_counter()
     trace: list[dict[str, Any]] = []
+    timing: dict[str, Any] = {"llm_calls": 0, "llm_s": 0.0, "tools_s": {}}
     messages: list[dict[str, Any]] = [
         {"role": "system", "content": SYSTEM},
         {"role": "user", "content": question},
@@ -395,7 +396,10 @@ def ask(
             last = step == max_steps - 1
             if last:
                 messages.append({"role": "user", "content": "Stop using tools. Reply with only the final JSON now."})
+            t_llm = time.perf_counter()
             msg = chat(base_url, messages, strength=strengths[attempt], **({} if last else {"tools": tool_schema()}))
+            timing["llm_calls"] += 1
+            timing["llm_s"] = round(timing["llm_s"] + time.perf_counter() - t_llm, 2)
             calls = msg.get("tool_calls") or []
             messages.append(
                 {"role": "assistant", "content": msg.get("content") or "", "tool_calls": calls}
@@ -415,7 +419,9 @@ def ask(
                     args = json.loads(c["function"].get("arguments") or "{}")
                 except json.JSONDecodeError:
                     args = {}
+                t_tool = time.perf_counter()
                 result = call_tool(mem, name, args, base_url)
+                timing["tools_s"][name] = round(timing["tools_s"].get(name, 0.0) + time.perf_counter() - t_tool, 2)
                 if name == "search_objects" and isinstance(result, list):
                     candidates = candidates or result
                 trace.append({"tool": name, "args": args, "result": result})
@@ -437,6 +443,7 @@ def ask(
                     verified=True,
                     trace=trace,
                     attempts=attempt + 1,
+                    timing=timing,
                     latency_s=round(time.perf_counter() - t0, 1),
                 )
                 return ans
@@ -451,7 +458,7 @@ def ask(
             }
         )
     out = not_sure(mem, question, candidates, problems)
-    out.update(trace=trace, attempts=2, latency_s=round(time.perf_counter() - t0, 1))
+    out.update(trace=trace, attempts=2, timing=timing, latency_s=round(time.perf_counter() - t0, 1))
     return out
 
 

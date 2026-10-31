@@ -115,6 +115,7 @@ def main() -> None:
                     "verified": ans.get("verified"),
                     "searches": [t["args"] for t in ans.get("trace", []) if t.get("tool") == "search_objects"],
                     "attempts": ans.get("attempts"),
+                    "timing": ans.get("timing"),
                     "latency_s": round(time.perf_counter() - t, 1),
                 }
             )

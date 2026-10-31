@@ -336,3 +336,17 @@ def test_places_merge_repeated_readings_and_cap_long_walks() -> None:
     assert len(capped) == 2 and "walk:b" in [p["id"] for p in capped]  # the most-seen place stays, as read most
     dist = [p["distance_along_walk_m"] for p in capped]
     assert dist == sorted(dist)
+
+
+def test_my_bag_finds_a_backpack_before_plastic_bags() -> None:
+    mem = _mem()
+    mem.con.execute(
+        "INSERT INTO objects (object_id, session_id, label, aliases, cx, cy, cz, last_seen, confidence, best_obs) "
+        "VALUES ('plastic_bag_1', 'am', 'plastic bag', '[]', 0, 0, 0, 9, 0.9, 'o1'), "
+        "('backpack_1', 'am', 'backpack', '[]', 0, 0, 0, 5, 0.7, 'o2')"
+    )
+    for q in ("bag", "my bag", "black bag"):
+        assert mem.search_objects(q)[0]["id"] == "am:backpack_1", q
+    assert mem.search_objects("plastic bag")[0]["id"] == "am:plastic_bag_1"
+    # one way only: a purse is not a backpack
+    assert "am:backpack_1" not in [o["id"] for o in mem.search_objects("purse")]
