@@ -268,3 +268,25 @@ only fail is the laundry false fail ("I haven't seen any sign the laundry is fin
 
 Eval time, 836 s over 35 questions: Glimmer 792 s (95%, 164 calls), `look` 40 s, every other tool under 3 s in total.
 Generation is 757 s at 47 tok/s, about 210 tokens per call, and prompt reading 65 s, so length of reasoning is the cost.
+
+Build time, measured on one clean `loci build` of home2 (24 s video, 48 keyframes, 51 objects), no caches, 1129 s (18.8 min):
+
+| stage | seconds | of which real work |
+| --- | --- | --- |
+| extract | 2 | |
+| redact | 123 | 21 s on the frames; the rest is imports and model load |
+| name | 161 | 50 s Glimmer start |
+| track | 80 | 65 s on the frames |
+| geometry | 198 | 10 s inference; 152 s model load from the data HDD |
+| lift, associate, relations | 2 | |
+| attributes | 533 | 39 s Glimmer start, then about 8.4 s per object (59 objects) |
+| transcribe, store, check, coach | 29 | |
+
+About 54% is Glimmer describing objects and 35% is imports and loading from the HDD. Peak 14.8 GB VRAM, 311 W, GPU 87 C.
+street2 (6:10 video, 304 keyframes, 1084 objects), from the Oct 30–31 logs, not one clean run: redact 415 s, name 31 s,
+track 994 s, geometry 237 s, lift 27 s, associate 493 s, attributes 2373 s, the rest about 90 s, roughly 78 min in all.
+
+Asking: tools take milliseconds; `look` 4–30 s; Glimmer start 4 s with the file cached, up to 6 min from a cold HDD.
+API: most endpoints under 200 ms. Exception: `/navigate` on street2 takes 175 s every call (13 M cell grid, A* in
+Python) and street 2.6 s. Answers and the viewer only ask for it on home walks (12 ms), so the demo does not hit this.
+
