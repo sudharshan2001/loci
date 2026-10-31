@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS objects (
   first_seen REAL, last_seen REAL, n_obs INTEGER, confidence REAL, best_obs TEXT,
   location_text TEXT, text TEXT, text_english TEXT, state TEXT, state_seen_at REAL, attribute_confidence REAL,
   distance_along_walk_m REAL, side TEXT, passed_at REAL, dist_to_door_m REAL, dist_to_start_m REAL,
+  text_clear INTEGER,
   PRIMARY KEY (session_id, object_id)
 );
 CREATE TABLE IF NOT EXISTS observations (
@@ -79,6 +80,8 @@ def connect(path: Path) -> sqlite3.Connection:
         con.execute("ALTER TABLE sessions ADD COLUMN captured_at TEXT")
     if "start_name" not in cols:
         con.execute("ALTER TABLE sessions ADD COLUMN start_name TEXT")
+    if "text_clear" not in {r["name"] for r in con.execute("PRAGMA table_info(objects)")}:
+        con.execute("ALTER TABLE objects ADD COLUMN text_clear INTEGER")
     return con
 
 
@@ -137,6 +140,16 @@ def tidy_objects(objects: list[dict], exclude: list[str]) -> list[dict]:
     return kept
 
 
+def text_is_clear(o: dict, sign_answers: dict[str, dict]) -> int | None:
+    """1 if the sign was read whole, 0 for a partial reading (still searchable, kept out of shop lists)."""
+    text = o.get("text")
+    if not text:
+        return None
+    entry = sign_answers.get(f"{o.get('attribute_obs')}|sign")
+    readable = entry is None or entry["answer"].get("readable", True)
+    return int(bool(readable) and "..." not in text and "…" not in text and "illegible" not in text.lower())
+
+
 def run(session: Session, db_path: Path) -> dict:
     import numpy as np
 
@@ -149,6 +162,8 @@ def run(session: Session, db_path: Path) -> dict:
     all_objects = session.read(session.objects)
     exclude = load_config()["scenes"][meta["scene"]].get("exclude_from_memory", [])
     objects = tidy_objects(all_objects, exclude)
+    attr_cache = session.root / "attr_cache.json"
+    sign_answers = session.read(attr_cache) if attr_cache.exists() else {}
     kept = {o["object_id"] for o in objects}
     dropped_obs = {i for o in all_objects if o["object_id"] not in kept for i in o["obs_ids"]}
     obs = [b for b in session.read(session.observations) if b["obs_id"] not in dropped_obs]
@@ -199,7 +214,7 @@ def run(session: Session, db_path: Path) -> dict:
             ],
         )
         con.executemany(
-            "INSERT INTO objects VALUES (" + ",".join("?" * 27) + ")",
+            "INSERT INTO objects VALUES (" + ",".join("?" * 28) + ")",
             [
                 (
                     o["object_id"],
@@ -227,6 +242,7 @@ def run(session: Session, db_path: Path) -> dict:
                     o.get("passed_at"),
                     o.get("dist_to_door_m"),
                     o.get("dist_to_start_m"),
+                    text_is_clear(o, sign_answers),
                 )
                 for o in objects
             ],

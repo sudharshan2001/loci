@@ -77,6 +77,13 @@ def test_state_contradiction_and_now_claim(mem: Memory) -> None:
     assert any("when it was seen" in p for p in problems)
 
 
+def test_negated_state_contradicts_a_lit_burner(mem: Memory) -> None:
+    ans = {"object_id": "home:gas_stove_1", "evidence": ["obs_gas_stove_1"], "seen_at": "0:31"}
+    assert any("stored state" in p for p in verify({**ans, "answer": "As of 0:31 the burner was not lit."}, mem))
+    assert any("stored state" in p for p in verify({**ans, "answer": "No, the stove was unattended at 0:31."}, mem))
+    assert verify({**ans, "answer": "As of 0:31 the burner was lit."}, mem) == []
+
+
 def test_wrong_evidence_and_missing_object(mem: Memory) -> None:
     assert verify({"answer": "x", "object_id": "home:nope_1", "evidence": []}, mem)[0].startswith("object_id")
     ans = {"answer": "Your keys are on the desk.", "object_id": "home:keys_1", "evidence": ["obs_desk_1"]}
@@ -93,6 +100,16 @@ def test_relation_check(mem: Memory) -> None:
     assert verify(good, mem) == []
     bad = {**good, "answer": "Your keys are inside the drawer."}
     assert any("inside the drawer" in p for p in verify(bad, mem))
+
+
+def test_a_walk_is_not_something_things_stand_on(mem: Memory) -> None:
+    ans = {
+        "answer": "Your keys are on the desk; they were only seen on the other walk.",
+        "object_id": "home:keys_1",
+        "evidence": ["obs_keys_1"],
+        "location_text": "on the desk, in the bedroom",
+    }
+    assert verify(ans, mem) == []
 
 
 def test_shop_name_distance_side(mem: Memory) -> None:
@@ -160,6 +177,25 @@ def test_evidence_from_another_capture_is_rejected(mem: Memory) -> None:
     assert res == [{"id": "home:tv_1", "evidence": ["home:obs_1"]}, {"capture": "pm", "evidence": ["pm:obs_2"]}]
 
 
+def test_comparing_walks_may_cite_the_same_thing_in_the_other_walk(mem: Memory) -> None:
+    mem.con.execute("INSERT INTO sessions (session_id, scene) VALUES ('later', 'home')")
+    mem.con.execute(
+        "INSERT INTO observations (obs_id, session_id, object_id, keyframe, t, label, score) "
+        "VALUES ('obs_9', 'later', 'gas_stove_9', 0, 1.0, 'gas stove', 0.9)"
+    )
+    ans = {
+        "answer": "As of 0:31 the burner was lit.",
+        "object_id": "home:gas_stove_1",
+        "evidence": ["home:obs_gas_stove_1", "later:obs_9"],
+        "seen_at": "0:31",
+    }
+    assert verify(ans, mem) == []
+    assert any("no evidence from capture home" in p for p in verify({**ans, "evidence": ["later:obs_9"]}, mem))
+    # another kind of thing in the other walk is still a wrong pairing
+    keys = {**ans, "object_id": "home:keys_1", "answer": "Your keys.", "evidence": ["home:obs_keys_1", "later:obs_9"]}
+    assert any("from capture later" in p for p in verify(keys, mem))
+
+
 def test_multi_object_answers(mem: Memory) -> None:
     # a change summary without a single object: evidence must exist
     assert verify({"answer": "Your keys moved.", "object_id": None, "evidence": ["home:obs_keys_1"]}, mem) == []
@@ -173,3 +209,27 @@ def test_multi_object_answers(mem: Memory) -> None:
         "seen_at": "0:31",
     }
     assert verify(ans, mem) == []
+
+
+def test_times_in_the_answer_must_be_when_it_was_seen(mem: Memory) -> None:
+    good = {
+        "answer": "Sudarshan Silks was on your right at about 0:30.",
+        "object_id": "street:shop_sign_1",
+        "evidence": ["obs_shop_sign_1"],
+    }
+    assert verify(good, mem) == []
+    bad = {**good, "answer": "ಸುದರ್ಶನ್ Sudarshan Silks 1:41 ಕ್ಕೆ."}
+    assert any("1:41" in p for p in verify(bad, mem))
+    assert any("1:41" in p for p in verify({**good, "seen_at": "1:41"}, mem))
+
+
+def test_times_may_come_from_other_things_named(mem: Memory) -> None:
+    mem.con.execute("UPDATE objects SET first_seen=50, last_seen=60 WHERE object_id='desk_1'")
+    ans = {
+        "answer": "Your keys were seen at 0:31 and the desk at 0:55.",
+        "object_id": "home:keys_1",
+        "evidence": ["obs_keys_1"],
+    }
+    assert verify(ans, mem) == []
+    # a clock time on a sign is not a capture time
+    assert not [p for p in verify({**ans, "answer": "Your keys, seen at 0:31, open at 10:30 am."}, mem) if "10:30" in p]

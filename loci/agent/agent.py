@@ -35,7 +35,9 @@ capture time; if it is movable and the sighting is old, say so ("that was this m
 capture, giving its time; if an older capture differs, mention it ("it was off in the morning capture").
 - "What changed / moved since ...": call list_captures, then what_changed with the earlier and the later \
 capture of that place. Answer from its result without more tools: state changes first (the stove was lit, now \
-off), then what moved, then a few additions. Put the ids you mention in objects.
+off, with was_seen_at and now_seen_at), then what moved. If nothing moved, say so. Things in seen_only lists: name \
+a few as "only seen on your Oct 29 walk"; they may not have been filmed on the other walk, so never say they are \
+gone or new. Put the ids you mention in objects.
 - "Into the walk" distances are measured from where the walk started; list_captures gives each walk's \
 start_name (e.g. the user's office). For "how far from my office/start", call route with from_id "start".
 - Directions between two places on a walk: call route and give distance, direction and one or two landmarks.
@@ -45,14 +47,18 @@ the walk in metres, and the time.
 - A search result with seen_as was seen to be that thing (a "fruit stand" seen as "coconut stall"): answer about it \
 without look. Several results seen_as the same thing: use the one seen most recently.
 - "What's on my desk/table?": take the desk with the most things_on across all captures, call objects_on on it, \
-name each kind of thing once and say which room. Do not answer from a desk with no things_on when another has some.
+name each kind of thing once and say the room if the tool gives one. Do not answer from a desk with no things_on \
+when another has some.
 - If search returns things of a related kind but not the exact name (a "street stall" or "fruit stand" when \
 asked about a coconut stall), call look on the likely candidates before deciding. Answer about the one that \
 look confirms; only say it was not seen if look rules them all out.
-- "What shops did I pass?" with no walk named: call list_captures, then places_passed for the newest walk only. \
-Name a handful in walk order with side and distance, say which walk it was, and put their ids in objects.
+- Shops in general ("What shops did I pass?", "Which side were the shops on?") with no walk named: call \
+places_passed without a session, which gives the newest walk, and use only that walk. Name a handful in walk order \
+with side and distance, say which walk it was, and put their ids in objects.
 - Kinds of shop ("clothing stores", "jewellers"): call places_passed and choose from the names by what you know \
 of them (Allen Solly and Louis Philippe sell clothes); give each one's name, side and distance.
+- "My bag", "my phone": if that kind of thing was seen, answer with its newest sighting. Do not refuse because you \
+cannot tell whose it is.
 - If nothing matching was seen, say so plainly: "I haven't seen a <thing> in any capture." and set \
 object_id to null.
 - Write for a person: dates like "Oct 28", no ids, no field names (say "the burner was not lit", not burner_lit), \
@@ -76,13 +82,20 @@ MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", 
 ISO_DATE = re.compile(r"\b\d{4}-(\d{2})-(\d{2})(?:T\d{2}:\d{2}(?::\d{2})?(?:[+-]\d{2}:\d{2}|Z)?)?")
 OBJECT_ID = re.compile(r"[;,]?\s*\(?\b[a-z0-9_]+:[a-z0-9]+(?:_[a-z0-9]+)+\b\)?")
 FIELD_NAME = re.compile(r"\b[a-z]+(?:_[a-z0-9]+)+\b")
+CAPTURE_NAME = re.compile(r"\b(home|street)\d+\b")
+STORED_AS = re.compile(r"\b(was|were|is|are) (?:seen|logged|labell?ed|stored|recorded) as\b")
+SEEN_AS = re.compile(r"\bseen as\s+")
+PLURAL_REFUSAL = re.compile(r"\b(haven't seen) an? ((?:\w+ )*?\w*[^s\W]s) in any capture")
 
 
 def clean_answer(text: str) -> str:
     """What is said to a person: no raw timestamps, ids or field names, even when the model copies them from a tool."""
     text = ISO_DATE.sub(lambda m: f"{MONTHS[int(m[1]) - 1]} {int(m[2])}", text)
     text = OBJECT_ID.sub("", text)
-    return FIELD_NAME.sub(lambda m: m[0].replace("_", " "), text).strip()
+    text = FIELD_NAME.sub(lambda m: m[0].replace("_", " "), text)
+    text = CAPTURE_NAME.sub(r"\1", text)
+    text = SEEN_AS.sub("", STORED_AS.sub(r"\1", text))
+    return PLURAL_REFUSAL.sub(r"\1 any \2 in any capture", text).strip()
 
 
 def script_counts(text: str) -> dict[str, int]:
@@ -127,7 +140,7 @@ TOOLS = [
     ),
     (
         "places_passed",
-        "Shop signs passed on a street walk, in order, with distance, side and time.",
+        "Shop signs passed on a street walk, in order, with distance, side and time. No session: the newest walk.",
         {"session_id": {"type": "string"}},
         [],
     ),
@@ -282,6 +295,11 @@ def call_tool(mem: Memory, name: str, args: dict[str, Any], base_url: str | None
     return qualify_evidence(result)
 
 
+def own_evidence_first(evidence: list[str], sid: str) -> list[str]:
+    """The first evidence is the proof frame shown: it must come from the capture of the answered object."""
+    return sorted(evidence, key=lambda e: e.rpartition(":")[0] not in ("", sid))
+
+
 def complete(ans: dict[str, Any], mem: Memory) -> dict[str, Any]:
     """Fill position, robot goal and scene facts from the memory (the model never writes numbers here)."""
     oid = ans.get("object_id")
@@ -296,6 +314,7 @@ def complete(ans: dict[str, Any], mem: Memory) -> dict[str, Any]:
     ans["position_m"] = o["position_m"]
     ans["location_text"] = ans.get("location_text") or o["location_text"]
     ans["session"] = sid
+    ans["evidence"] = own_evidence_first(ans.get("evidence") or [], sid)
     ans["robot_goal"] = {
         "frame": f"loci/{sid}",
         "target": o["label"],

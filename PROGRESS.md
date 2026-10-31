@@ -216,13 +216,44 @@ Known issues:
 - Home positions shift by up to ~1 m between neighbouring frames on a fast walk. Merging hides the duplicates, not the
   error, so "what moved" lists furniture that did not move. Only state changes in that answer are dependable.
 - Metric scale, M6 check against the developer's measurements: office to Lenovo 260 m real, 278 m in Loci (+7%); desk
-  to door 1.5 m real, 1.6 m in Loci (+7%). Both within the ~10% limit. Only one distance of each kind was checked, and
-  the home one does not rule out the ~1 m shift above.
-- Room names are unreliable: the desk is "kitchen" in `home2`, so answers can say "on the desk in the kitchen".
-- 216 of the 617 sign objects with text before merging were partial readings Glimmer marked unreadable. Wrong names
-  still appear in the shop list ("Vangevar" beside "Manyavar", "Alien Solly").
-- A second Kalyan board at 46 m stays separate from the shop at 144 m; not checked which is right. Times are not
-  verified in free text: one Kannada answer gave 1:41 for a sighting at 0:41.
-- Run-to-run variance remains (temperature 1.0, model card setting). A question can pass one run and fail the next.
-- Home alerts repeat ("window open" twice) and include low-value ones (a door left open).
+  to door 1.5 m real, 1.6 m in Loci (+7%). Both within the ~10% limit. Only one distance of each kind was checked. The
+  home one is weak: "How far is the desk from the door?" answers 1.6 m or 1.1 m by run, depending on which desk and door
+  it picks, and home2 positions still shift by up to ~2 m.
 - A full street2 rebuild is 1–2 h on one GPU. It is built after the walk, not in real time.
+
+## Oct 31 – fixes from reading the answers
+
+Eval, 35 questions, final code: **94% (33/35)**, refusals 5/5, verified on first attempt 80% (was 71%), median 18.8 s
+(was 26.5 s), no cloud calls. Runs during this work: 91%, 91%, 94%, 94%, so ±1–2 questions is noise. The eval got
+stricter: an answer that says "haven't seen" while citing an object now fails. That rule also fails one correct answer
+in this run ("Is the laundry done?": "I haven't seen laundry as done ... a pile still in the bedroom"), so by reading
+34/35 are right. The real miss: Tamil "where is my bag?" refused again.
+
+What changed:
+- "What changed": things are paired nearest first in the room frame, furniture is never reported, a move needs a new
+  surface (2 m+) or 4 m+, and a state change needs confidence 0.7 on both sides. Screens are not judged (blurred).
+  "Seen on one walk only" is worded as that, at most 4 each way. home -> home2 now gives: stove lit at 0:15 -> off at
+  0:00, nothing moved. Windows dropped out: the frames do not show open (home is by day, home2 by night).
+- Leaving check: one fact per kind of thing; doors, screens, laundry, plastic bags and a laptop on a desk are out; a
+  window needs 0.8. Result: home has one alert (right burner lit at 0:15), home2 none.
+- Rooms: label every 2nd keyframe (spec said every 5th, which lost the desk's room on a quick walk), `--areas-only`
+  relabels without re-tracking. No room is named where labels flip or sightings disagree. A stove is in the kitchen; a
+  desk is never in it. Same desk is still "office" in home and "bedroom" in home2.
+- Shop list: only clearly read names (234 of 411 street2 signs), a neighbouring misreading folds into the name read
+  most ("Vangevar" into "Manyavar"), one spelling per walk ("Alien Solly" -> "Allen Solly"). Partial readings stay
+  searchable. No walk named means the newest walk, never a mix.
+- Verifier: capture times said in an answer must be when something named was seen; "not lit" and "not open" are no longer
+  read as lit and open; a leading "No" and "unattended" count as negative; "on the other walk" is not a relation.
+  Comparing walks may cite the same thing in the other walk; the proof frame always comes from the answered capture.
+- Search: an object's own name beats what vision said about it. A laptop described as "keyboard" ranked above real
+  keyboards, and the "not sure" fallback then named the laptop. Wording: "street2", "seen as", "a car keys" are cleaned.
+
+Known issues:
+- The time check is only as tight as a sign's sighting span (over 30 s on 36 of 411 street2 signs), and times in summary
+  answers with no object are not checked. The "1:41 for 0:41" noted earlier was not a wrong time: 1:41 is the last-seen
+  time stored for the Kalyan board at 46 m, passed at 0:41. A board seen a minute after it was passed probably mixes two
+  boards, so that 46 m Kalyan is doubtful.
+- Some field wording still slips through at temperature 1.0 ("shop open true", "the street walk you did on street").
+- Tamil "my bag" refuses in some runs despite the new rule. Unnamed "shop front" entries take slots in the 40-place list.
+- Footage: no keys, no spoken notes (0 utterances), one plant in home and none in home2, no Sudarshan Silks. Demo
+  questions 4 and 5 cannot work until the new home recording.

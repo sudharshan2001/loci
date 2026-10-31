@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import re
 import statistics
 import time
 from pathlib import Path
@@ -29,6 +30,9 @@ from loci.stages.store import connect
 log = logging.getLogger("eval")
 
 
+SAYS_NOT_SEEN = re.compile(r"haven't seen|ನೋಡಿಲ್ಲ|பார்க்கவில்லை")
+
+
 def label_of(mem: Memory, uid: str | None) -> str | None:
     if not uid:
         return None
@@ -42,6 +46,8 @@ def score(item: dict, ans: dict, mem: Memory) -> tuple[bool, str]:
         return oid is None, "refused" if oid is None else f"answered {label_of(mem, oid)}"
     if oid is None and not ans.get("objects") and not ans.get("evidence"):
         return False, "refused"
+    if SAYS_NOT_SEEN.search(ans.get("answer") or ""):  # cites an object, but tells the person it was not seen
+        return False, "says not seen"
     if not ans.get("verified"):
         return False, "not sure (unverified)"
     ids = [oid, *(ans.get("objects") or [])] if oid else ans.get("objects") or []

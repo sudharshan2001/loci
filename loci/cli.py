@@ -91,7 +91,9 @@ def redact(session: str, keep_raw: bool = typer.Option(False, "--keep-raw")) -> 
 
 
 @app.command()
-def name(session: str) -> None:
+def name(
+    session: str, areas_only: bool = typer.Option(False, "--areas-only", help="keep the vocabulary, relabel the areas")
+) -> None:
     """Stage 3: Glimmer names objects and labels areas (redacted frames only)."""
     from loci.llm import glimmer_server
     from loci.providers import get_namer
@@ -99,8 +101,10 @@ def name(session: str) -> None:
 
     s = _session(session)
     vocab = _cfg()["scenes"][s.scene()]["vocab"]
+    every = _cfg()["name"]["area_every"]
     with glimmer_server(s.root / "glimmer.log") as url:
-        res = stage.run(s, get_namer(url), vocab)
+        namer = get_namer(url)
+        res = stage.relabel_areas(s, namer, every) if areas_only else stage.run(s, namer, vocab, area_every=every)
     typer.echo(f"{s.id}: {len(res['vocab'])} phrases; areas {sorted(set(res['areas']))}")
     typer.echo(", ".join(res["vocab"]))
 

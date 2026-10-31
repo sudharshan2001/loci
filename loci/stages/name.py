@@ -50,11 +50,15 @@ def normalise(phrases: list[str], max_words: int = 4) -> list[str]:
 
 
 def smooth(labels: list[str]) -> list[str]:
-    """Overrule isolated labels: one sample that disagrees with both (agreeing) neighbours takes theirs."""
+    """Overrule isolated labels: a sample that disagrees with both (agreeing) neighbours takes theirs. Where all three
+    differ the room is not known, and "room" keeps it out of answers: naming no room beats naming the wrong one."""
     out = list(labels)
     for i in range(1, len(labels) - 1):
-        if labels[i - 1] == labels[i + 1] != labels[i]:
-            out[i] = labels[i - 1]
+        before, here, after = labels[i - 1], labels[i], labels[i + 1]
+        if before == after != here:
+            out[i] = before
+        elif before != here != after:
+            out[i] = "room"
     return out
 
 
@@ -70,26 +74,34 @@ def spread(n: int, k: int) -> list[int]:
     return sorted({int(i) for i in np.linspace(0, n - 1, min(k, n)).round()})
 
 
-def run(session: Session, namer: Namer, default_vocab: list[str], n_images: int = 8, area_every: int = 5) -> dict:
+def label_areas(session: Session, namer: Namer, area_every: int) -> dict:
+    """The area of every keyframe. A quick walk crosses a room in a few samples, so they must be close together."""
     kfs = session.keyframes()
-    files = [session.keyframes_dir / k["file"] for k in kfs]
+    scene = session.scene()
+    sampled = list(range(0, len(kfs), area_every))
+    raw = [namer.label_area(session.keyframes_dir / kfs[i]["file"], scene) for i in sampled]
+    labelled = dict(zip(sampled, smooth(raw), strict=True))
+    return {
+        "areas": fill_nearest([k["t"] for k in kfs], labelled),
+        "area_samples": {str(i): a for i, a in zip(sampled, raw, strict=True)},
+    }
+
+
+def relabel_areas(session: Session, namer: Namer, area_every: int) -> dict:
+    """New area labels only: the vocabulary stays, so tracking does not have to run again."""
+    result = {**session.read(session.vocab), **label_areas(session, namer, area_every)}
+    session.write(session.vocab, result)
+    return result
+
+
+def run(session: Session, namer: Namer, default_vocab: list[str], n_images: int = 8, area_every: int = 5) -> dict:
+    files = [session.keyframes_dir / k["file"] for k in session.keyframes()]
     scene = session.scene()
 
     named = namer.name_objects([files[i] for i in spread(len(files), n_images)], scene)
     vocab = normalise(list(default_vocab) + named)
-
-    sampled = list(range(0, len(files), area_every))
-    raw = [namer.label_area(files[i], scene) for i in sampled]
-    labelled = dict(zip(sampled, smooth(raw), strict=True))
-    areas = fill_nearest([k["t"] for k in kfs], labelled)
-
-    result = {
-        "scene": scene,
-        "named": named,
-        "vocab": vocab,
-        "areas": areas,
-        "area_samples": {str(i): a for i, a in zip(sampled, raw, strict=True)},
-    }
+    result = {"scene": scene, "named": named, "vocab": vocab, **label_areas(session, namer, area_every)}
     session.write(session.vocab, result)
+    areas = result["areas"]
     log.info("%s: %d phrases (%d from Glimmer), areas %s", session.id, len(vocab), len(named), sorted(set(areas)))
     return result

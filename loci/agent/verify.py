@@ -12,11 +12,16 @@ from loci.agent.tools import Memory, fmt_time, split_uid
 
 REL_RE = re.compile(r"\b(on|inside|left of|right of|near) the ([a-z][a-z \-]*?)(?=,|\.|;| in the |$)")
 METRES_RE = re.compile(r"(\d+(?:\.\d+)?)\s*(?:m\b|metres|meters)")
-NEG_WORDS = re.compile(r"\b(off|not lit|unlit|no flame|closed|not on|not running|switched off)\b")
+NEG_WORDS = re.compile(
+    r"\b(off|not lit|unlit|no flame|closed|not on|not open|not running|switched off|unattended)\b|^no\b"
+)
 # "on" as a state, not "on your left" / "on the desk"
 POS_WORDS = re.compile(
-    r"\b(lit|on(?!\s+(?:the|your|a|an|my|top|left|right)\b)|burning|open|running|switched on|flame)\b"
+    r"\b(?<!not )(lit|on(?!\s+(?:the|your|a|an|my|top|left|right)\b)|burning|open|running|switched on|flame)\b"
 )
+# capture times like 1:41, not clock times like 10:30 am on a sign
+TIME_RE = re.compile(r"\b(\d{1,2}):(\d{2})\b(?!\s*[ap]\.?m)")
+TIME_TOLERANCE_S = 2.0
 
 
 def _labels(row) -> set[str]:
@@ -29,6 +34,35 @@ def _state_polarity(state: dict[str, Any]) -> bool | None:
         if isinstance(v, bool):
             return v
     return None
+
+
+def _seen_spans(row) -> list[tuple[float, float]]:
+    spans = [(row["first_seen"], row["last_seen"])] if row["first_seen"] is not None else []
+    return spans + [(t, t) for t in (row["state_seen_at"], row["passed_at"]) if t is not None]
+
+
+def time_problems(text: str, seen_at: str | None, oid: str, related: set[str], mem: Memory) -> list[str]:
+    """Every capture time said must be a time something named in the answer was seen. Answers may also compare with
+    the same thing in another home capture, or name another thing without listing it."""
+    said = {f"{m}:{s}": int(m) * 60 + int(s) for m, s in TIME_RE.findall(f"{text} {seen_at or ''}")}
+    if not said:
+        return []
+    row = mem._obj(oid)
+    rows = [r for r in (mem._obj(u) for u in related) if r is not None]
+    if row["distance_along_walk_m"] is None:
+        rows += mem.con.execute("SELECT * FROM objects WHERE label=?", (row["label"],)).fetchall()
+    for other in mem.con.execute("SELECT * FROM objects WHERE session_id=?", (row["session_id"],)).fetchall():
+        names = (other["text"], other["text_english"], None if other["text"] else other["label"])
+        if any(n and n.lower() in text for n in names):
+            rows.append(other)
+    spans = [s for r in rows for s in _seen_spans(r)]
+    wrong = [k for k, t in said.items() if not any(a - TIME_TOLERANCE_S <= t <= b + TIME_TOLERANCE_S for a, b in spans)]
+    if not wrong:
+        return []
+    known = fmt_time(
+        next((t for t in (row["state_seen_at"], row["passed_at"], row["last_seen"]) if t is not None), None)
+    )
+    return [f"time {k} is not when this was seen (it was seen at {known})" for k in wrong]
 
 
 def verify(ans: dict[str, Any], mem: Memory) -> list[str]:
@@ -57,7 +91,12 @@ def verify(ans: dict[str, Any], mem: Memory) -> list[str]:
         # evidence ids may be capture-qualified ("<session>:obs_0033_01"); obs ids repeat across captures
         ev_sid, _, ev = ev.rpartition(":")
         if ev_sid and ev_sid != sid:
-            problems.append(f"evidence {ev_sid}:{ev} is from capture {ev_sid}, but the object is in {sid}")
+            # comparing walks ("lit on Oct 28") may cite the same kind of thing there; anything else is a wrong pairing
+            other = mem.con.execute(
+                "SELECT label FROM observations WHERE session_id=? AND obs_id=?", (ev_sid, ev)
+            ).fetchone()
+            if other is None or other["label"] not in _labels(row):
+                problems.append(f"evidence {ev_sid}:{ev} is from capture {ev_sid}, but the object is in {sid}")
             continue
         ob = mem.con.execute("SELECT * FROM observations WHERE session_id=? AND obs_id=?", (sid, ev)).fetchone()
         if ob is None:
@@ -68,6 +107,9 @@ def verify(ans: dict[str, Any], mem: Memory) -> list[str]:
             problems.append(f"evidence {ev} belongs to {owner}, not {oid}")
         elif owner == oid and ob["label"] not in _labels(row):
             problems.append(f"evidence {ev} label {ob['label']!r} does not match {row['label']!r}")
+
+    if ans.get("evidence") and all(e.rpartition(":")[0] not in ("", sid) for e in ans["evidence"]):
+        problems.append(f"no evidence from capture {sid}, where the object was seen")
 
     # position (filled by code, but check anyway): inside the object's box
     pos = ans.get("position_m")
@@ -98,6 +140,8 @@ def verify(ans: dict[str, Any], mem: Memory) -> list[str]:
             target = target.strip()
             if word == "on" and target.startswith(("your ", "left", "right", "the left", "the right", "burner")):
                 continue  # a side or a part ("on the right burner"), not a thing it stands on
+            if word == "on" and target.split()[-1] in ("walk", "capture", "visit"):
+                continue  # when, not where: "only seen on the other walk"
             if not any(word == w and fuzz.WRatio(target, lab) >= 85 for w, lab in stored):
                 if any(f"{word} the {target}" in t for t in known_texts):
                     continue
@@ -123,6 +167,8 @@ def verify(ans: dict[str, Any], mem: Memory) -> list[str]:
             problems.append(f"state answer must say when it was seen ({seen})")
         if re.search(r"\b(right now|currently|is still|at the moment)\b", text):
             problems.append("state answers must be 'as of' when seen, not about now")
+
+    problems += time_problems(text, ans.get("seen_at"), oid, related, mem)
 
     # shop names: answer must contain the stored sign text (fuzzy)
     if row["text"]:

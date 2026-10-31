@@ -28,3 +28,13 @@ def test_spread_covers_ends() -> None:
 def test_smooth_overrules_isolated_label() -> None:
     assert smooth(["office", "bedroom", "office", "office"]) == ["office"] * 4
     assert smooth(["kitchen", "kitchen", "bedroom", "bedroom"]) == ["kitchen", "kitchen", "bedroom", "bedroom"]
+
+
+def test_smooth_says_nothing_where_labels_flip() -> None:
+    assert smooth(["office", "bedroom", "hallway", "kitchen", "kitchen"]) == [
+        "office",
+        "room",
+        "room",
+        "kitchen",
+        "kitchen",
+    ]

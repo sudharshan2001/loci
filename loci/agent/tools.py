@@ -84,6 +84,7 @@ def singular(word: str) -> str:
 
 
 DIRECT_MATCH = 101  # above any fuzzy score
+LABEL_MATCH = 102  # the object's own name beats what vision said about it: a laptop "with a keyboard" is no keyboard
 
 
 def yours(name: str | None) -> str | None:
@@ -108,11 +109,43 @@ MOVABILITY: list[tuple[tuple[str, ...], float | None]] = [
 ]
 
 
+# what_changed: between two walks, positions of things that stayed put differ by up to ~2 m, and by up to ~3.5 m for
+# things seen only briefly (measured on home/home2). A move needs a new thing to stand on, or a distance beyond that.
+MOVED_MIN_M = 2.0
+MOVED_ANYWAY_M = 4.0
+SEEN_ONLY_SHOWN = 4
+# a state change needs both sightings to be this sure; window frames filmed by day and by night read 0.65-0.75
+STATE_MIN_CONFIDENCE = 0.7
+# screens are blurred before anything looks at them, so on/off is not known from the frame
+UNJUDGED_STATES = {"screen_on"}
+# furniture and fixtures stay where they are, and walks name them differently ("kitchen shelf", "storage shelf")
+STATIC_WORDS = {
+    "desk", "table", "shelf", "shelving", "cabinet", "wardrobe", "bed", "sofa", "couch", "chair", "door", "window",
+    "socket", "outlet", "switch", "stove", "fridge", "sink", "monitor", "curtain", "fan", "rack", "counter", "drawer",
+}  # fmt: skip
+
+
 def half_life_h(label: str) -> float | None:
     for words, h in MOVABILITY:
         if any(w == label or w in label.split() for w in words):
             return h
     return None
+
+
+def _anchor(location_text: str | None) -> str:
+    """The thing an object stands on or is inside, without the room: "on the desk, in the office" -> "on the desk"."""
+    first = (location_text or "").split(",")[0].strip()
+    return first if first.startswith(("on the ", "inside the ")) else ""
+
+
+def _same_place(name: str, row: sqlite3.Row, other: str, other_row: sqlite3.Row) -> bool:
+    """Two readings of one place on a walk: the same name close by, or a misreading right next to it on the same side
+    ("Vangevar" 7 m from "Manyavar")."""
+    gap = abs(row["distance_along_walk_m"] - other_row["distance_along_walk_m"])
+    ratio = fuzz.ratio(name, other)
+    if gap <= 40 and ratio >= 88:
+        return True
+    return gap <= 15 and ratio >= 60 and min(len(name), len(other)) >= 6 and row["side"] == other_row["side"]
 
 
 def fmt_time(t: float | None) -> str | None:
@@ -178,6 +211,7 @@ class Memory:
         asked = set(norm(query.strip()).split())
         scored = []
         seen_as: dict[tuple[str, str], str] = {}
+        same_kind: set[tuple[str, str]] = set()
         for r in rows:
             aliases = json.loads(r["aliases"] or "[]")
             names = [r["label"], *aliases]
@@ -210,11 +244,19 @@ class Memory:
             score = max(s_name, s_text)
             # the words asked for are in what vision called this very object: above any synonym of its kind
             direct = next((a for a in aliases if asked and asked <= set(norm(a).split())), None)
-            if direct:
+            if asked and asked <= set(norm(r["label"]).split()):
+                score = LABEL_MATCH
+            elif direct:
                 score = DIRECT_MATCH
                 seen_as[(r["session_id"], r["object_id"])] = direct
+                if max(fuzz.ratio(norm(t), norm(r["label"])) for t in terms) >= 80:
+                    same_kind.add((r["session_id"], r["object_id"]))
             if score >= 80:
                 scored.append((score, r))
+        if any(sc == LABEL_MATCH for sc, _ in scored):
+            scored = [
+                (sc, r) for sc, r in scored if sc != DIRECT_MATCH or (r["session_id"], r["object_id"]) in same_kind
+            ]
         scored.sort(
             key=lambda x: (-x[0], -things_on.get((x[1]["session_id"], x[1]["object_id"]), 0), -x[1]["last_seen"])
         )
@@ -231,7 +273,7 @@ class Memory:
                 session_turn = per_session.get(r["session_id"], 0)
                 per_session[r["session_id"]] = session_turn + 1
                 varied.append((label_turn, session_turn, sc, r))
-        varied.sort(key=lambda x: (x[2] < DIRECT_MATCH, x[0], x[1], -x[2], -x[3]["last_seen"]))
+        varied.sort(key=lambda x: (-max(x[2], DIRECT_MATCH - 1), x[0], x[1], -x[2], -x[3]["last_seen"]))
         scored = [(sc, r) for _, _, sc, r in varied]
         return [
             {
@@ -415,11 +457,31 @@ class Memory:
         ).fetchall()
         return [{**dict(r), "start_name": yours(r["start_name"])} for r in rows]
 
-    def what_changed(self, session_a: str, session_b: str) -> dict[str, Any]:
-        """Differences from capture a (earlier) to capture b (later): added, removed, moved, state changes.
+    def _pairs(
+        self, ra: list[sqlite3.Row], rb: list[sqlite3.Row]
+    ) -> list[tuple[sqlite3.Row, sqlite3.Row, float | None]]:
+        """Same-label objects of two captures, one to one: closest first in the room frame, else in the order seen."""
+        pa, pb = [self._room_pos(r) for r in ra], [self._room_pos(r) for r in rb]
+        if any(p is None for p in pa + pb):
+            return [(x, y, None) for x, y in zip(ra, rb, strict=False)]
+        dist = sorted((float(np.linalg.norm(p - q)), i, j) for i, p in enumerate(pa) for j, q in enumerate(pb))
+        pairs: list[tuple[sqlite3.Row, sqlite3.Row, float | None]] = []
+        used_a: set[int] = set()
+        used_b: set[int] = set()
+        for d, i, j in dist:
+            if i not in used_a and j not in used_b:
+                used_a.add(i)
+                used_b.add(j)
+                pairs.append((ra[i], rb[j], d))
+        return pairs
 
-        Objects are matched by label (and sign text). "Moved" compares where each thing was (its location text),
-        which works even when the two captures are not registered into one coordinate frame.
+    def what_changed(self, session_a: str, session_b: str) -> dict[str, Any]:
+        """Differences from capture a (earlier) to capture b (later): state changes, things moved, things seen on
+        only one walk.
+
+        Objects are matched by label (and sign text), closest first in the room frame. Furniture is never reported:
+        its position error between walks is larger than any real move. Something seen on one walk only may simply
+        not have been filmed on the other, so those lists say that and nothing more.
         """
 
         def by_key(sid: str) -> dict[str, list[sqlite3.Row]]:
@@ -427,6 +489,9 @@ class Memory:
             for r in self.con.execute("SELECT * FROM objects WHERE session_id=? ORDER BY first_seen", (sid,)):
                 out.setdefault(r["text"] or r["label"], []).append(r)
             return out
+
+        def sure(r: sqlite3.Row) -> bool:
+            return r["attribute_confidence"] is None or r["attribute_confidence"] >= STATE_MIN_CONFIDENCE
 
         a, b = by_key(session_a), by_key(session_b)
         if not a or not b:
@@ -436,54 +501,58 @@ class Memory:
             "to": session_b,
             "from_captured_at": self._captured(session_a),
             "to_captured_at": self._captured(session_b),
-            # most telling first: long added/removed lists can run past what the agent is shown
+            # most telling first: long lists can run past what the agent is shown
             "state_changed": [],
             "moved": [],
-            "removed": [],
-            "added": [],
+            "seen_only_earlier": [],
+            "seen_only_later": [],
+            "note": "seen_only lists may just not have been filmed on the other walk; they are not gone or new",
         }
         for key in sorted(set(a) | set(b)):
             ra, rb = a.get(key, []), b.get(key, [])
-            if len(rb) > len(ra):
-                res["added"] += [{"id": uid(r), "label": key, "where": r["location_text"]} for r in rb[len(ra) :]]
-            if len(ra) > len(rb):
-                res["removed"] += [{"id": uid(r), "label": key, "was": r["location_text"]} for r in ra[len(rb) :]]
-            for x, y in zip(ra, rb, strict=False):
-                px, py = self._room_pos(x), self._room_pos(y)
-                if px is not None and py is not None:  # both captures aligned: compare metric positions
-                    d = float(np.linalg.norm(px - py))
-                    if d > 0.3:
-                        res["moved"].append(
-                            {
-                                "id": uid(y),
-                                "label": key,
-                                "moved_m": round(d, 2),
-                                "was": x["location_text"],
-                                "now": y["location_text"],
-                                "evidence": [y["best_obs"]],
-                            }
-                        )
-                elif x["location_text"] and y["location_text"] and x["location_text"] != y["location_text"]:
+            static = bool(STATIC_WORDS & set(key.split()))
+            if not ra or not rb:
+                if not static:
+                    r = (ra or rb)[0]
+                    side = "seen_only_earlier" if ra else "seen_only_later"
+                    res[side].append({"id": uid(r), "label": key, "where": r["location_text"]})
+                continue
+            for x, y, d in self._pairs(ra, rb):
+                was, now = _anchor(x["location_text"]), _anchor(y["location_text"])
+                if d is None:  # captures not aligned: only the thing it stands on can tell
+                    shifted = bool(was and now and was != now)
+                else:
+                    shifted = d >= MOVED_ANYWAY_M or (d >= MOVED_MIN_M and bool(was and now and was != now))
+                if shifted and not static:
                     res["moved"].append(
                         {
                             "id": uid(y),
                             "label": key,
+                            **({} if d is None else {"moved_m": round(d, 2)}),
                             "was": x["location_text"],
                             "now": y["location_text"],
                             "evidence": [y["best_obs"]],
                         }
                     )
-                if x["state"] and y["state"] and json.loads(x["state"]) != json.loads(y["state"]):
+                only_one = len(ra) == len(rb) == 1
+                same_thing = only_one or (d is not None and d < MOVED_MIN_M)
+                if not (same_thing and x["state"] and y["state"] and sure(x) and sure(y)):
+                    continue
+                sx, sy = json.loads(x["state"]), json.loads(y["state"])
+                if sx != sy and not UNJUDGED_STATES & set(sy):
                     res["state_changed"].append(
                         {
                             "id": uid(y),
                             "label": key,
-                            "was": json.loads(x["state"]),
-                            "now": json.loads(y["state"]),
-                            "seen_at": fmt_time(y["state_seen_at"]),
+                            "was": sx,
+                            "was_seen_at": fmt_time(x["state_seen_at"]),
+                            "now": sy,
+                            "now_seen_at": fmt_time(y["state_seen_at"]),
                             "evidence": [y["best_obs"]],
                         }
                     )
+        for side in ("seen_only_earlier", "seen_only_later"):  # things that move first; the answer names only a few
+            res[side] = sorted(res[side], key=lambda t: half_life_h(t["label"]) is None)[:SEEN_ONLY_SHOWN]
         return res
 
     def route(self, from_id: str, to_id: str) -> dict[str, Any]:
@@ -519,7 +588,8 @@ class Memory:
         lo, hi = sorted((da, db))
         between = self.con.execute(
             "SELECT * FROM objects WHERE session_id=? AND distance_along_walk_m > ? AND distance_along_walk_m < ? "
-            "AND (text IS NOT NULL OR label LIKE '%stall%' OR label LIKE '%shop%') ORDER BY distance_along_walk_m",
+            "AND ((text IS NOT NULL AND text_clear IS NOT 0) OR label LIKE '%stall%' OR label LIKE '%shop%') "
+            "ORDER BY distance_along_walk_m",
             (sid, lo, hi),
         ).fetchall()
         if db < da:
@@ -540,11 +610,17 @@ class Memory:
         }
 
     def places_passed(self, session_id: str | None = None, per_walk: int = 40) -> list[dict[str, Any]]:
-        """Places along the walks, in walk order. The same name read again nearby counts as one place, and a long
-        walk keeps the places seen most, so the list fits in the context."""
+        """Places along the walks, in walk order. Only clearly read names. The same name read again nearby counts as one
+        place, called what it was read as most, and a long walk keeps the places seen most, so the list fits."""
         # read signs, plus stalls and shop fronts even when no sign text could be read
+        if not session_id:  # no walk named: the newest one, never a mix of walks
+            newest = self.con.execute(
+                "SELECT session_id FROM sessions WHERE scene='street' ORDER BY captured_at DESC LIMIT 1"
+            ).fetchone()
+            session_id = newest["session_id"] if newest else None
         q = (
-            "SELECT * FROM objects WHERE distance_along_walk_m IS NOT NULL AND ((text IS NOT NULL AND text != '') "
+            "SELECT * FROM objects WHERE distance_along_walk_m IS NOT NULL "
+            "AND ((text IS NOT NULL AND text != '' AND text_clear IS NOT 0) "
             "OR label LIKE '%stall%' OR label LIKE '%stand%' OR label LIKE '%shop front%' OR label LIKE '%kiosk%')"
         )
         args: tuple = ()
@@ -556,37 +632,37 @@ class Memory:
         for r in rows:
             name = (r["text_english"] or r["text"] or "").lower().strip()
             places = walks.setdefault(r["session_id"], [])
-            same = next(
-                (
-                    p
-                    for p in places
-                    if name
-                    and p["name"]
-                    and fuzz.ratio(name, p["name"]) >= 88
-                    and r["distance_along_walk_m"] - p["row"]["distance_along_walk_m"] <= 40
-                ),
-                None,
-            )
+            same = next((p for p in places if name and _same_place(name, r, p["name"], p["row"])), None)
             if same:
                 same["seen"] += r["n_obs"] or 1
+                if (r["n_obs"] or 1) > (same["row"]["n_obs"] or 1):
+                    same.update(row=r, name=name)
             else:
                 places.append({"name": name, "row": r, "seen": r["n_obs"] or 1})
         out = []
         for places in walks.values():
+            for p in places:
+                # one spelling for a name read at several shops of a walk: "Alien Solly" is the rarer "Allen Solly"
+                likely = max(
+                    (q for q in places if q["name"] and fuzz.ratio(p["name"], q["name"]) >= 88),
+                    key=lambda q: q["seen"],
+                    default=p,
+                )
+                p["spelled"] = likely["row"]
             top = sorted(places, key=lambda p: -p["seen"])[:per_walk]
             out += sorted(top, key=lambda p: p["row"]["distance_along_walk_m"])
         return [
             {
                 "id": uid(r),
-                "name": r["text"] or r["label"],
-                "name_english": r["text_english"],
+                "name": p["spelled"]["text"] or r["text"] or r["label"],
+                "name_english": p["spelled"]["text_english"] or r["text_english"],
                 "open": json.loads(r["state"]).get("shop_open") if r["state"] else None,
                 "distance_along_walk_m": r["distance_along_walk_m"],
                 "side": r["side"],
                 "passed_at": fmt_time(r["passed_at"]),
                 "evidence": [r["best_obs"]],
             }
-            for r in (p["row"] for p in out)
+            for p, r in ((p, p["row"]) for p in out)
         ]
 
     def objects_near(self, id: str, radius_m: float = 1.0) -> list[dict[str, Any]]:

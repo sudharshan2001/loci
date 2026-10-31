@@ -1,6 +1,8 @@
 import json
 import sqlite3
 
+import numpy as np
+
 from loci.agent.tools import Memory
 from loci.stages.store import SCHEMA
 
@@ -82,8 +84,8 @@ def test_what_changed_states_moves_added_removed() -> None:
         "burner_lit": True
     }
     assert [(m["label"], m["was"], m["now"]) for m in ch["moved"]] == [("keys", "on the desk", "on the bed")]
-    assert [x["label"] for x in ch["added"]] == ["phone"]
-    assert [x["label"] for x in ch["removed"]] == ["laundry pile"]
+    assert [x["label"] for x in ch["seen_only_later"]] == ["phone"]
+    assert [x["label"] for x in ch["seen_only_earlier"]] == ["laundry pile"]
 
 
 def test_search_head_noun_typos_and_no_false_keys() -> None:
@@ -144,6 +146,124 @@ def test_last_known_links_across_aligned_captures_and_decays() -> None:
     )  # 6 h later, keys half-life 6 h
     ch = mem.what_changed("am", "pm")
     assert ("keys", 2.0) in [(m["label"], m["moved_m"]) for m in ch["moved"]]
+
+
+def _aligned(rows: list[tuple]) -> Memory:
+    mem = _mem()
+    mem.con.execute("DELETE FROM objects")
+    frame = json.dumps({"transform": np.eye(4).tolist()})
+    mem.con.execute("UPDATE sessions SET to_room_frame=? WHERE session_id IN ('am', 'pm')", (frame,))
+    for sid, oid, label, x, where, *rest in rows:
+        state, conf = (rest + [None, None])[:2]
+        mem.con.execute(
+            "INSERT INTO objects (object_id, session_id, label, aliases, cx, cy, cz, location_text, best_obs, state,"
+            " attribute_confidence) VALUES (?,?,?,'[]',?,0,0,?,?,?,?)",
+            (oid, sid, label, x, where, f"obs_{oid}", state, conf),
+        )
+    return mem
+
+
+def test_what_changed_does_not_report_position_noise() -> None:
+    ch = _aligned(
+        [
+            ("am", "desk_1", "desk", 0.0, "in the office"),
+            ("pm", "desk_1", "desk", 5.0, "in the kitchen"),  # furniture: never reported, however far
+            ("am", "laptop_1", "laptop", 0.0, "on the desk, in the office"),
+            ("pm", "laptop_1", "laptop", 3.0, "on the desk, in the kitchen"),  # same place, room name differs
+            ("am", "bag_1", "bag", 0.0, "on the bed"),
+            ("pm", "bag_1", "bag", 1.5, "on the desk"),  # inside the position error
+            ("am", "mug_1", "mug", 0.0, "on the desk, in the office"),
+            ("pm", "mug_1", "mug", 3.5, "in the bedroom"),  # no new surface, and within the error for brief sightings
+            ("am", "shelf_1", "kitchen shelf", 0.0, None),
+            ("pm", "air_fryer_1", "air fryer", 0.0, "on the desk"),
+        ]
+    ).what_changed("am", "pm")
+    assert ch["moved"] == [] and ch["seen_only_earlier"] == []
+    assert [x["label"] for x in ch["seen_only_later"]] == ["air fryer"]
+
+
+def test_what_changed_pairs_nearest_and_needs_sure_states() -> None:
+    on, off = '{"burner_lit": true}', '{"burner_lit": false}'
+    op, shut = '{"window_open": true}', '{"window_open": false}'
+    ch = _aligned(
+        [
+            ("am", "keys_1", "keys", 1.0, "on the desk"),
+            ("am", "keys_2", "keys", 9.0, "on the bed"),
+            ("pm", "keys_1", "keys", 9.1, "on the bed"),  # order differs: still the same two sets of keys
+            ("pm", "keys_2", "keys", 1.1, "on the desk"),
+            ("am", "gas_stove_1", "gas stove", 0.0, None, on, 0.75),
+            ("pm", "gas_stove_1", "gas stove", 0.2, None, off, 0.85),
+            ("am", "window_1", "window", 0.0, None, op, 0.75),
+            ("pm", "window_1", "window", 0.3, None, shut, 0.65),  # too unsure to call a change
+            ("am", "monitor_1", "computer monitor", 0.0, None, '{"screen_on": true}', 0.9),
+            ("pm", "monitor_1", "computer monitor", 0.1, None, '{"screen_on": false}', 0.9),  # blurred screens
+            ("am", "door_1", "door", 0.0, None, '{"door_open": true}', 0.9),
+            ("am", "door_2", "door", 9.0, None, '{"door_open": true}', 0.9),
+            ("pm", "door_1", "door", 4.0, None, '{"door_open": false}', 0.9),  # not near either: another door
+            ("pm", "door_2", "door", 5.0, None, '{"door_open": false}', 0.9),
+        ]
+    ).what_changed("am", "pm")
+    assert ch["moved"] == []
+    assert [c["label"] for c in ch["state_changed"]] == ["gas stove"]
+
+
+def test_own_name_beats_what_vision_said() -> None:
+    mem = _mem()
+    mem.con.execute("DELETE FROM objects")
+    for oid, label, aliases in [
+        ("laptop_1", "laptop", ["keyboard"]),
+        ("keyboard_1", "keyboard", []),
+        ("bucket_1", "laundry bucket", ["purple bucket"]),
+    ]:
+        mem.con.execute(
+            "INSERT INTO objects (object_id, session_id, label, aliases, last_seen) VALUES (?, 'am', ?, ?, 1.0)",
+            (oid, label, json.dumps(aliases)),
+        )
+    assert [h["label"] for h in mem.search_objects("keyboard")] == ["keyboard"]
+    assert mem.search_objects("purple bucket")[0]["seen_as"] == "purple bucket"
+
+
+def test_places_default_to_the_newest_walk() -> None:
+    mem = _mem()
+    mem.con.execute("DELETE FROM objects")
+    mem.con.execute("INSERT INTO sessions (session_id, scene, captured_at) VALUES ('w1', 'street', '2026-10-28')")
+    mem.con.execute("INSERT INTO sessions (session_id, scene, captured_at) VALUES ('w2', 'street', '2026-10-29')")
+    for sid, text in [("w1", "Old Shop"), ("w2", "New Shop")]:
+        mem.con.execute(
+            "INSERT INTO objects (object_id, session_id, label, aliases, text, distance_along_walk_m, side, n_obs) "
+            "VALUES ('a', ?, 'signboard', '[]', ?, 5.0, 'left', 1)",
+            (sid, text),
+        )
+    assert [p["name"] for p in mem.places_passed()] == ["New Shop"]
+    assert [p["name"] for p in mem.places_passed("w1")] == ["Old Shop"]
+
+
+def test_places_hide_partial_readings_and_fix_spelling() -> None:
+    mem = _mem()
+    mem.con.execute("DELETE FROM objects")
+
+    def sign(oid: str, text: str, dist: float, n_obs: int, clear: int = 1, side: str = "left") -> None:
+        mem.con.execute(
+            "INSERT INTO objects (object_id, session_id, label, aliases, text, text_english, distance_along_walk_m, "
+            "side, n_obs, text_clear) VALUES (?, 'walk', 'signboard', '[]', ?, ?, ?, ?, ?, ?)",
+            (oid, text, text, dist, side, n_obs, clear),
+        )
+
+    sign("a", "Allen Solly", 100.0, 13)
+    sign("b", "Alien Solly", 190.0, 10)
+    sign("c", "Women I", 120.0, 30, clear=0)
+    sign("d", "Vangevar", 250.0, 9)
+    sign("e", "Manyavar", 257.0, 34)
+    sign("f", "Mangalam", 262.0, 3, side="right")  # other side of the road: its own place
+    sign("g", "Lenovo", 278.0, 2)
+    assert [p["name"] for p in mem.places_passed("walk")] == [
+        "Allen Solly",
+        "Allen Solly",
+        "Manyavar",
+        "Mangalam",
+        "Lenovo",
+    ]
+    assert "Women I" not in [p["name"] for p in mem.route("walk:a", "walk:g")["you_pass"]]
 
 
 def test_plurals_compounds_and_new_synonyms() -> None:
@@ -213,6 +333,6 @@ def test_places_merge_repeated_readings_and_cap_long_walks() -> None:
     names = [p["name"] for p in mem.places_passed("walk") if (p["name"] or "").lower().startswith("kalyan")]
     assert len(names) == 2
     capped = mem.places_passed("walk", per_walk=2)
-    assert len(capped) == 2 and "walk:a" in [p["id"] for p in capped]  # the most-seen place stays
+    assert len(capped) == 2 and "walk:b" in [p["id"] for p in capped]  # the most-seen place stays, as read most
     dist = [p["distance_along_walk_m"] for p in capped]
     assert dist == sorted(dist)

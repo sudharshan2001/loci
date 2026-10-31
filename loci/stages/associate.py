@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import re
+from collections import Counter
 from typing import Any
 
 import numpy as np
@@ -17,6 +18,9 @@ from loci.config import load_config
 from loci.session import Session
 
 log = logging.getLogger(__name__)
+
+ALWAYS_KITCHEN = {"stove"}
+NOT_KITCHEN = {"desk", "monitor", "keyboard", "laptop", "mouse", "webcam", "bed", "pillow"}
 
 
 def box_iou(a_min, a_max, b_min, b_max) -> float:
@@ -141,6 +145,18 @@ def merge_adjacent_views(objs: list[_Obj], max_gap_s: float, max_dist_m: float) 
     return objs
 
 
+def settled_area(label: str, areas: list[str]) -> str:
+    """The room of an object from the rooms of its sightings: "room" (unknown) unless most of them agree, and unless
+    the room suits the thing. A gas stove is in the kitchen; a desk in the kitchen is a labelling slip."""
+    words = set(label.split())
+    if words & ALWAYS_KITCHEN:
+        return "kitchen"
+    area = Counter(areas).most_common(1)[0][0]
+    if Counter(areas)[area] * 2 <= len(areas) or (area == "kitchen" and words & NOT_KITCHEN):
+        return "room"
+    return area
+
+
 def associate(
     observations: list[dict],
     min_dist: float = 0.25,
@@ -191,7 +207,7 @@ def associate(
                 "score": round(float(np.mean([m["score"] for m in ms])), 3),
                 # one-frame detections are less trustworthy
                 "confidence": round(float(np.mean([m["score"] for m in ms]) * min(1.0, 0.5 + n / 6)), 3),
-                "area": max(set(areas), key=areas.count),
+                "area": settled_area(o.label, areas),
                 "best_obs": best["obs_id"],
                 "obs_ids": [m["obs_id"] for m in sorted(ms, key=lambda m: m["t"])],
             }

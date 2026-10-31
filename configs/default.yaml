@@ -53,6 +53,10 @@ scenes:
     exclude_from_memory: [person, car, motorcycle, scooter, suv, sedan, auto rickshaw, bus, helmet, backpack, bag,
                           mobile phone, phone, water bottle, umbrella]
 
+name:
+  # area label every n-th keyframe; a quick walk crosses a room in a few frames (5 lost the desk's room on home2)
+  area_every: 2
+
 track:
   min_score: 0.5
 
