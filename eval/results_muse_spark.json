@@ -1,0 +1,986 @@
+[
+  {
+    "q": "What's on my desk?",
+    "expect": [
+      "computer monitor",
+      "laptop",
+      "keyboard",
+      "desk"
+    ],
+    "clip": "home.mp4",
+    "answer": "On your office desk you've got a laptop on a stand, a monitor, a keyboard and a pillow.",
+    "ok": true,
+    "why": "labels ['desk', 'keyboard', 'laptop', 'computer monitor', 'laptop stand', 'pillow']",
+    "verified": true,
+    "searches": [
+      {
+        "query": "desk"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 3,
+      "llm_s": 6.46,
+      "tools_s": {
+        "search_objects": 0.29,
+        "objects_on": 0.0
+      }
+    },
+    "latency_s": 6.9
+  },
+  {
+    "q": "Where is my laptop?",
+    "expect": [
+      "laptop"
+    ],
+    "clip": "home.mp4",
+    "answer": "Your laptop was in the bedroom on your Oct 29 walk at 0:24 — that was a while ago and laptops move, so check there first.",
+    "ok": true,
+    "why": "labels ['laptop']",
+    "verified": true,
+    "searches": [
+      {
+        "query": "laptop"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 4,
+      "llm_s": 6.97,
+      "tools_s": {
+        "search_objects": 0.04,
+        "last_known": 0.06,
+        "get_object": 0.0
+      }
+    },
+    "latency_s": 7.3
+  },
+  {
+    "q": "Where's the keyboard?",
+    "expect": [
+      "keyboard"
+    ],
+    "clip": "home.mp4",
+    "answer": "It was in the bedroom on your Oct 29 walk at 0:23.",
+    "ok": true,
+    "why": "labels ['keyboard']",
+    "verified": true,
+    "searches": [
+      {
+        "query": "keyboard"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 4,
+      "llm_s": 8.28,
+      "tools_s": {
+        "search_objects": 0.03,
+        "last_known": 0.04,
+        "get_object": 0.0
+      }
+    },
+    "latency_s": 8.4
+  },
+  {
+    "q": "Is the laundry done?",
+    "expect": [
+      "laundry pile",
+      "laundry bucket",
+      "clothes"
+    ],
+    "clip": "home.mp4",
+    "answer": "Not yet — as of 0:21 on your Oct 29 walk there was still a laundry pile and a full bucket in the bedroom.",
+    "ok": true,
+    "why": "labels ['laundry pile', 'laundry bucket']",
+    "verified": true,
+    "searches": [
+      {
+        "query": "laundry"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 3,
+      "llm_s": 5.57,
+      "tools_s": {
+        "search_objects": 0.05,
+        "state_history": 0.05
+      }
+    },
+    "latency_s": 5.7
+  },
+  {
+    "q": "Where's the purple bucket?",
+    "expect": [
+      "bucket",
+      "laundry bucket"
+    ],
+    "clip": "home.mp4",
+    "answer": "It was left of the desk in the bedroom on your Oct 28 walk — that was a while ago and buckets move, so check there.",
+    "ok": true,
+    "why": "labels ['laundry bucket']",
+    "verified": true,
+    "searches": [
+      {
+        "query": "purple bucket"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 4,
+      "llm_s": 8.31,
+      "tools_s": {
+        "search_objects": 0.04,
+        "last_known": 0.04,
+        "get_object": 0.0
+      }
+    },
+    "latency_s": 8.4
+  },
+  {
+    "q": "Where did I leave my backpack?",
+    "expect": [
+      "backpack",
+      "bag"
+    ],
+    "clip": "home.mp4",
+    "answer": "You left it left of the desk in the bedroom, seen at 0:18 on your Oct 28 walk — but that was a while ago and backpacks move, so check there.",
+    "ok": true,
+    "why": "labels ['backpack']",
+    "verified": true,
+    "searches": [
+      {
+        "query": "backpack"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 4,
+      "llm_s": 6.83,
+      "tools_s": {
+        "search_objects": 0.03,
+        "last_known": 0.03,
+        "get_object": 0.0
+      }
+    },
+    "latency_s": 6.9
+  },
+  {
+    "q": "Where's the laptop stand?",
+    "expect": [
+      "laptop stand",
+      "stand"
+    ],
+    "clip": "home.mp4",
+    "answer": "On the desk in the office, as of your Oct 28 walk — that was a few days ago and it can move, so have a look there.",
+    "ok": true,
+    "why": "labels ['laptop stand']",
+    "verified": true,
+    "searches": [
+      {
+        "query": "laptop stand"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 4,
+      "llm_s": 7.26,
+      "tools_s": {
+        "search_objects": 0.03,
+        "last_known": 0.03,
+        "get_object": 0.0
+      }
+    },
+    "latency_s": 7.3
+  },
+  {
+    "q": "Is the stove on?",
+    "note": "no lit stove in this capture; a correct answer says no state is recorded or names the stove with as-of time",
+    "clip": "home.mp4",
+    "answer": "No — the burner was not lit as of 0:00 on your Oct 29 walk. It was lit on your Oct 28 walk.",
+    "ok": true,
+    "why": "no expectation (manual check)",
+    "verified": true,
+    "searches": [
+      {
+        "query": "stove"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 3,
+      "llm_s": 6.62,
+      "tools_s": {
+        "search_objects": 0.07,
+        "state_history": 0.07
+      }
+    },
+    "latency_s": 6.8
+  },
+  {
+    "q": "Are the lights on?",
+    "refuse": true,
+    "clip": "home.mp4",
+    "answer": "I haven't seen whether the lights are on in any capture.",
+    "ok": true,
+    "why": "refused",
+    "verified": true,
+    "searches": [
+      {
+        "query": "lights"
+      },
+      {
+        "query": "lamp"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 6,
+      "llm_s": 10.69,
+      "tools_s": {
+        "search_objects": 0.15,
+        "state_history": 0.15,
+        "get_state": 0.0
+      }
+    },
+    "latency_s": 11.0
+  },
+  {
+    "q": "How far is the desk from the door?",
+    "note": "metres, sanity range 1-5 m",
+    "clip": "home.mp4",
+    "answer": "The desk in the office is about a metre from the door.",
+    "ok": true,
+    "why": "no expectation (manual check)",
+    "verified": true,
+    "searches": [
+      {
+        "query": "desk"
+      },
+      {
+        "query": "door"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 4,
+      "llm_s": 9.2,
+      "tools_s": {
+        "search_objects": 0.13,
+        "get_object": 0.05
+      }
+    },
+    "latency_s": 9.4
+  },
+  {
+    "q": "Where's my passport?",
+    "refuse": true,
+    "clip": "home.mp4",
+    "answer": "I haven't seen a passport in any capture.",
+    "ok": true,
+    "why": "refused",
+    "verified": true,
+    "searches": [
+      {
+        "query": "passport"
+      },
+      {
+        "query": "travel document"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 4,
+      "llm_s": 6.58,
+      "tools_s": {
+        "search_objects": 0.06,
+        "last_known": 0.03
+      }
+    },
+    "latency_s": 6.7
+  },
+  {
+    "q": "Where are my car keys?",
+    "refuse": true,
+    "clip": "home.mp4",
+    "answer": "I haven't seen car keys in any capture.",
+    "ok": true,
+    "why": "refused",
+    "verified": true,
+    "searches": [
+      {
+        "query": "car keys"
+      },
+      {
+        "query": "keys"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 4,
+      "llm_s": 6.78,
+      "tools_s": {
+        "search_objects": 0.28,
+        "last_known": 0.06
+      }
+    },
+    "latency_s": 7.1
+  },
+  {
+    "q": "ಸ್ಟವ್ ಆನ್ ಆಗಿತ್ತಾ?",
+    "expect": [
+      "gas stove"
+    ],
+    "clip": "home.mp4",
+    "answer": "ಇಲ್ಲ, ನೀವು ಅಕ್ಟೋಬರ್ 29 ರ ವಾಕ್‌ನಲ್ಲಿ ಅಡುಗೆಮನೆಯನ್ನು 0:00 ಕ್ಕೆ ನೋಡಿದಾಗ ಸ್ಟವ್ ಆನ್ ಇರಲಿಲ್ಲ. ಅಕ್ಟೋಬರ್ 28 ರ ವಾಕ್‌ನಲ್ಲಿ ಅದು ಉರಿಯುತ್ತಿತ್ತು.",
+    "ok": true,
+    "why": "labels ['gas stove']",
+    "verified": true,
+    "searches": [
+      {
+        "query": "stove"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 3,
+      "llm_s": 5.83,
+      "tools_s": {
+        "search_objects": 0.07,
+        "state_history": 0.09
+      }
+    },
+    "latency_s": 6.1
+  },
+  {
+    "q": "அடுப்பு எரிந்துகொண்டிருந்ததா?",
+    "expect": [
+      "gas stove"
+    ],
+    "clip": "home.mp4",
+    "answer": "அக்ட் 29 நடையில் 0:00-ல் சமையலறையை பார்த்தபோது அடுப்பு எரியவில்லை, ஆனால் அக்ட் 28 நடையில் வலது பர்னர் எரிந்துகொண்டிருந்தது.",
+    "ok": true,
+    "why": "labels ['gas stove']",
+    "verified": true,
+    "searches": [
+      {
+        "query": "stove"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 3,
+      "llm_s": 6.44,
+      "tools_s": {
+        "search_objects": 0.07,
+        "state_history": 0.07
+      }
+    },
+    "latency_s": 6.7
+  },
+  {
+    "q": "என் பை எங்கே?",
+    "expect": [
+      "backpack",
+      "bag",
+      "plastic bag"
+    ],
+    "clip": "home.mp4",
+    "answer": "உங்கள் பை அக் 29 நடையில் 0:23-ல் படுக்கையறையில் இருந்தது, அது கொஞ்சம் பழைய காட்சி, பைகள் நகரும் அதனால் சரிபாருங்கள்.",
+    "ok": true,
+    "why": "labels ['plastic bag']",
+    "verified": true,
+    "searches": [
+      {
+        "query": "bag"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 4,
+      "llm_s": 7.65,
+      "tools_s": {
+        "search_objects": 0.07,
+        "last_known": 0.07,
+        "get_object": 0.0
+      }
+    },
+    "latency_s": 7.8
+  },
+  {
+    "q": "What changed in my home since the first capture?",
+    "note": "should mention the stove (lit in the first capture, off in the second); checked by hand",
+    "clip": "home.mp4",
+    "answer": "Your right gas burner was lit at 0:15 on your Oct 28 walk, and it was off as of 0:00 on your Oct 29 walk. Nothing moved; the air fryer and cardboard box were only seen on your Oct 29 walk, while the backpack and laptop stand were only seen on your Oct 28 walk, but they may just not have been filmed.",
+    "ok": true,
+    "why": "no expectation (manual check)",
+    "verified": true,
+    "searches": [
+      {
+        "query": "home"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 4,
+      "llm_s": 8.93,
+      "tools_s": {
+        "search_objects": 0.03,
+        "list_captures": 0.0,
+        "what_changed": 0.01
+      }
+    },
+    "latency_s": 9.0
+  },
+  {
+    "q": "Where was the coconut stall?",
+    "expect": [
+      "coconut stall",
+      "coconut",
+      "fruit stand"
+    ],
+    "clip": "street.mp4",
+    "answer": "The coconut stall was on your left about 12 metres into your street walk.",
+    "ok": true,
+    "why": "labels ['fruit stand']",
+    "verified": true,
+    "searches": [
+      {
+        "query": "coconut stall"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 3,
+      "llm_s": 9.77,
+      "tools_s": {
+        "search_objects": 0.09,
+        "get_object": 0.25
+      }
+    },
+    "latency_s": 10.1
+  },
+  {
+    "q": "What shops did I pass?",
+    "expect": [
+      "shop sign",
+      "signboard",
+      "shop front",
+      "stall"
+    ],
+    "clip": "street.mp4",
+    "answer": "On your Oct 29 walk from your office you passed Reebok on your left at 21m, FOREVER 21 on your left at 23m, VIP on your right at 60m, J.C.CHANDRA JEWELLERS on your right at 64m, and megamart on your left at 94m, among many others.",
+    "ok": true,
+    "why": "labels ['signboard', 'signboard', 'signboard', 'signboard', 'signboard']",
+    "verified": true,
+    "searches": [
+      {
+        "query": "shop"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 4,
+      "llm_s": 9.36,
+      "tools_s": {
+        "search_objects": 0.05,
+        "places_passed": 0.02,
+        "list_captures": 0.0
+      }
+    },
+    "latency_s": 10.3
+  },
+  {
+    "q": "Was the coconut stall open?",
+    "expect": [
+      "coconut stall",
+      "fruit stand"
+    ],
+    "clip": "street.mp4",
+    "answer": "Yes — the coconut stall on your left about 12 m into your Oct 28 walk was open, as of 0:00 into that walk.",
+    "ok": true,
+    "why": "labels ['fruit stand']",
+    "verified": true,
+    "searches": [
+      {
+        "query": "coconut stall"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 3,
+      "llm_s": 6.35,
+      "tools_s": {
+        "search_objects": 0.16,
+        "state_history": 0.1
+      }
+    },
+    "latency_s": 6.6
+  },
+  {
+    "q": "How do I get from the coconut stall to the next shop?",
+    "note": "uses route; distance and direction along the walk",
+    "clip": "street.mp4",
+    "answer": "From the coconut stall keep walking straight about 20 metres, and the next shop is on your right, about 33 m into the walk.",
+    "ok": true,
+    "why": "no expectation (manual check)",
+    "verified": true,
+    "searches": [
+      {
+        "query": "coconut stall"
+      },
+      {
+        "query": "shop"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 7,
+      "llm_s": 17.26,
+      "tools_s": {
+        "search_objects": 0.15,
+        "places_passed": 0.03,
+        "route": 0.0,
+        "get_object": 0.04,
+        "objects_near": 0.0
+      }
+    },
+    "latency_s": 17.5
+  },
+  {
+    "q": "Which side of the road were the shops on?",
+    "expect": [
+      "shop front",
+      "shop sign",
+      "stall"
+    ],
+    "clip": "street.mp4",
+    "answer": "On your newest walk most shops were on your left — Reebok at 21 metres, FOREVER 21, then BLUESTONE and BHIMA — with just a couple on your right like VIP at 60 metres.",
+    "ok": true,
+    "why": "labels ['signboard', 'signboard', 'signboard', 'signboard', 'signboard']",
+    "verified": true,
+    "searches": [
+      {
+        "query": "shops"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 3,
+      "llm_s": 6.33,
+      "tools_s": {
+        "search_objects": 0.07,
+        "places_passed": 0.03
+      }
+    },
+    "latency_s": 6.4
+  },
+  {
+    "q": "Where's the nearest ATM?",
+    "refuse": true,
+    "clip": "street.mp4",
+    "answer": "I haven't seen an ATM in any capture. The closest bank I saw was Karnataka Bank on your left about 84 m into your walk.",
+    "ok": true,
+    "why": "refused",
+    "verified": true,
+    "searches": [
+      {
+        "query": "ATM"
+      },
+      {
+        "query": "bank"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 4,
+      "llm_s": 7.95,
+      "tools_s": {
+        "search_objects": 0.04,
+        "look": 21.8,
+        "get_object": 0.0,
+        "places_passed": 0.02
+      }
+    },
+    "latency_s": 29.8
+  },
+  {
+    "q": "ಶ್ರೀ ಲಕ್ಷ್ಮಿ ಅಂಗಡಿ ಎಲ್ಲಿತ್ತು?",
+    "expect": [
+      "signboard",
+      "shop sign"
+    ],
+    "clip": "street.mp4",
+    "answer": "SRI LAKSHMI ಶ್ರೀ ಲಕ್ಷ್ಮಿ ಅಂಗಡಿ ನಿಮ್ಮ ಬಲಭಾಗದಲ್ಲಿ, ನಡಿಗೆಯಲ್ಲಿ ಸುಮಾರು 62 ಮೀಟರ್ ದೂರದಲ್ಲಿ 0:22 ಕ್ಕೆ ಕಾಣಿಸಿತು.",
+    "ok": true,
+    "why": "labels ['shop sign']",
+    "verified": true,
+    "searches": [
+      {
+        "query": "Shri Lakshmi"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 3,
+      "llm_s": 5.4,
+      "tools_s": {
+        "search_objects": 0.03,
+        "get_object": 0.0
+      }
+    },
+    "latency_s": 5.4
+  },
+  {
+    "q": "தேங்காய் கடை எங்கே இருந்தது?",
+    "expect": [
+      "fruit stand",
+      "coconut stall",
+      "street stall"
+    ],
+    "clip": "street.mp4",
+    "answer": "தேங்காய் கடை உங்கள் நடையின் தொடக்கத்தில் இடது பக்கம், சுமார் 12 மீட்டரில் இருந்தது.",
+    "ok": true,
+    "why": "labels ['fruit stand']",
+    "verified": true,
+    "searches": [
+      {
+        "query": "coconut stall"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 3,
+      "llm_s": 6.67,
+      "tools_s": {
+        "search_objects": 0.09,
+        "get_object": 0.0
+      }
+    },
+    "latency_s": 6.8
+  },
+  {
+    "q": "Where was Kalyan Jewellers?",
+    "expect_text": "kalyan",
+    "expect": [
+      "signboard",
+      "shop sign",
+      "shop front"
+    ],
+    "clip": "street2.mp4",
+    "answer": "KALYAN was on your left, about 144 m into the walk, passed at 2:21.",
+    "ok": true,
+    "why": "labels ['signboard']",
+    "verified": true,
+    "searches": [
+      {
+        "query": "Kalyan Jewellers"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 3,
+      "llm_s": 8.18,
+      "tools_s": {
+        "search_objects": 0.03,
+        "get_object": 0.0,
+        "places_passed": 0.02
+      }
+    },
+    "latency_s": 8.2
+  },
+  {
+    "q": "Where was the Levi's store?",
+    "expect_text": "levi",
+    "expect": [
+      "signboard",
+      "shop sign",
+      "shop front"
+    ],
+    "clip": "street2.mp4",
+    "answer": "The Levi's OUTLET was on your left, about 313 m into your Oct 29 walk from your office, at 5:09.",
+    "ok": true,
+    "why": "labels ['shop sign']",
+    "verified": true,
+    "searches": [
+      {
+        "query": "Levi's store"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 4,
+      "llm_s": 7.01,
+      "tools_s": {
+        "search_objects": 0.03,
+        "get_object": 0.0,
+        "list_captures": 0.0
+      }
+    },
+    "latency_s": 7.0
+  },
+  {
+    "q": "Which side of the road was BIBA on?",
+    "expect_text": "biba",
+    "expect": [
+      "signboard",
+      "shop sign",
+      "shop front"
+    ],
+    "clip": "street2.mp4",
+    "answer": "BIBA was on your left, about 187 metres into the walk at around 3:01.",
+    "ok": true,
+    "why": "labels ['signboard', 'shop front']",
+    "verified": true,
+    "searches": [
+      {
+        "query": "BIBA"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 3,
+      "llm_s": 6.42,
+      "tools_s": {
+        "search_objects": 0.03,
+        "get_object": 0.0
+      }
+    },
+    "latency_s": 6.5
+  },
+  {
+    "q": "How far from my office was Louis Philippe?",
+    "expect_text": "louis",
+    "expect": [
+      "signboard",
+      "shop sign",
+      "shop front"
+    ],
+    "clip": "street2.mp4",
+    "answer": "Louis Philippe Outlet was about 204 metres from your office, on your left about 3:25 into your Oct 29 walk.",
+    "ok": true,
+    "why": "labels ['signboard']",
+    "verified": true,
+    "searches": [
+      {
+        "query": "Louis Philippe"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 5,
+      "llm_s": 9.65,
+      "tools_s": {
+        "search_objects": 0.03,
+        "list_captures": 0.0,
+        "route": 0.0,
+        "get_object": 0.0
+      }
+    },
+    "latency_s": 9.7
+  },
+  {
+    "q": "How do I get from Kalyan Jewellers to Levi's?",
+    "note": "uses route; distance, direction and shops passed in between",
+    "clip": "street2.mp4",
+    "answer": "Keep going straight about 170 metres the way you were walking, Levi's Outlet is on your left past GRT Jewellers and Louis Philippe.",
+    "ok": true,
+    "why": "no expectation (manual check)",
+    "verified": true,
+    "searches": [
+      {
+        "query": "Kalyan Jewellers"
+      },
+      {
+        "query": "Levi's"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 4,
+      "llm_s": 6.78,
+      "tools_s": {
+        "search_objects": 0.06,
+        "places_passed": 0.04,
+        "route": 0.0
+      }
+    },
+    "latency_s": 6.9
+  },
+  {
+    "q": "Did I pass a fruit cart?",
+    "expect": [
+      "fruit cart",
+      "fruit stall",
+      "fruit stand",
+      "cart",
+      "street stall",
+      "banana"
+    ],
+    "clip": "street2.mp4",
+    "answer": "Yes, you passed a blue fruit cart on your right about 50 metres into your Oct 29 walk from your office.",
+    "ok": true,
+    "why": "labels ['fruit stall']",
+    "verified": true,
+    "searches": [
+      {
+        "query": "fruit cart"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 4,
+      "llm_s": 8.21,
+      "tools_s": {
+        "search_objects": 0.03,
+        "list_captures": 0.0,
+        "get_object": 0.0
+      }
+    },
+    "latency_s": 8.2
+  },
+  {
+    "q": "What clothing stores did I pass?",
+    "expect": [
+      "signboard",
+      "shop sign",
+      "shop front"
+    ],
+    "clip": "street2.mp4",
+    "answer": "On your newest walk you passed Reebok on the left at 21m, FOREVER 21 on the left at 23m, Soch on the left at 130m, BIBA on the left at 187m, LOUIS PHILIPPE OUTLET on the left at 204m, Van Heusen on the left at 246m, Manyavar on the left at 257m, Levi's OUTLET on the left at 313m, RED TAPE on the left at 355m and BRAND FACTORY on the left at 368m.",
+    "ok": true,
+    "why": "labels ['signboard', 'signboard', 'shop sign', 'signboard', 'signboard', 'signboard', 'signboard', 'shop sign', 'signboard', 'signboard']",
+    "verified": true,
+    "searches": [
+      {
+        "query": "clothing store"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 3,
+      "llm_s": 7.84,
+      "tools_s": {
+        "search_objects": 0.03,
+        "places_passed": 0.03
+      }
+    },
+    "latency_s": 7.9
+  },
+  {
+    "q": "Was there a Lenovo shop?",
+    "expect_text": "lenovo",
+    "expect": [
+      "signboard",
+      "shop sign",
+      "shop front"
+    ],
+    "clip": "street2.mp4",
+    "answer": "Yes, there was a Lenovo sign on your left about 278 m into your walk, at 4:41.",
+    "ok": true,
+    "why": "labels ['signboard']",
+    "verified": true,
+    "searches": [
+      {
+        "query": "Lenovo shop"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 3,
+      "llm_s": 4.96,
+      "tools_s": {
+        "search_objects": 0.05,
+        "get_object": 0.0
+      }
+    },
+    "latency_s": 5.0
+  },
+  {
+    "q": "Where's the nearest metro station?",
+    "refuse": true,
+    "clip": "street2.mp4",
+    "answer": "I haven't seen a metro station in any capture.",
+    "ok": true,
+    "why": "refused",
+    "verified": true,
+    "searches": [
+      {
+        "query": "metro station"
+      },
+      {
+        "query": "metro"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 4,
+      "llm_s": 7.29,
+      "tools_s": {
+        "search_objects": 0.06,
+        "places_passed": 0.02
+      }
+    },
+    "latency_s": 7.4
+  },
+  {
+    "q": "ಕಲ್ಯಾಣ್ ಜ್ಯುವೆಲ್ಲರ್ಸ್ ಎಲ್ಲಿತ್ತು?",
+    "expect_text": "kalyan",
+    "expect": [
+      "signboard",
+      "shop sign",
+      "shop front"
+    ],
+    "clip": "street2.mp4",
+    "answer": "KALYAN ಅಂಗಡಿ ನಿಮ್ಮ ಎಡಭಾಗದಲ್ಲಿ, ನಡಿಗೆಯಲ್ಲಿ ಸುಮಾರು 144 ಮೀಟರ್ ಒಳಗೆ ಇತ್ತು.",
+    "ok": true,
+    "why": "labels ['signboard']",
+    "verified": true,
+    "searches": [
+      {
+        "query": "Kalyan Jewellers"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 3,
+      "llm_s": 7.36,
+      "tools_s": {
+        "search_objects": 0.04,
+        "get_object": 0.0,
+        "places_passed": 0.02
+      }
+    },
+    "latency_s": 7.4
+  },
+  {
+    "q": "லீவைஸ் கடை எங்கே இருந்தது?",
+    "expect_text": "levi",
+    "expect": [
+      "signboard",
+      "shop sign",
+      "shop front"
+    ],
+    "clip": "street2.mp4",
+    "answer": "Levi's OUTLET கடை உங்கள் நடையில் இடது பக்கம், சுமார் 313 மீட்டர் தொலைவில் இருந்தது.",
+    "ok": true,
+    "why": "labels ['shop sign']",
+    "verified": true,
+    "searches": [
+      {
+        "query": "Levis"
+      }
+    ],
+    "attempts": 1,
+    "timing": {
+      "llm_calls": 3,
+      "llm_s": 5.64,
+      "tools_s": {
+        "search_objects": 0.03,
+        "get_object": 0.0
+      }
+    },
+    "latency_s": 5.7
+  }
+]

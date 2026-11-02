@@ -290,3 +290,25 @@ Asking: tools take milliseconds; `look` 4–30 s; Glimmer start 4 s with the fil
 API: most endpoints under 200 ms. Exception: `/navigate` on street2 takes 175 s every call (13 M cell grid, A* in
 Python) and street 2.6 s. Answers and the viewer only ask for it on home walks (12 ms), so the demo does not hit this.
 
+## Nov 2 – C1 start: Meta Model API client, Muse Spark as the agent (measured)
+
+`loci/cloud/meta_api.py`: every Meta call goes through it (retries with backoff and Retry-After, 180 s timeout, disk
+cache keyed by the request, key from MODEL_API_KEY in `.env`, never logged). Off unless `cloud.enabled` or
+`LOCI_CLOUD=1`. Muse Spark 1.3 in Standard mode (not used for training). Glimmer is not offered on the Meta API
+("None (self-host)"), so it stays local. Smoke: text 2.8 s, tool call 2.6 s, image 4.2 s (named the backpack).
+
+Same 35 questions, same memory, same tools and verifier (`scripts/eval.py --agent muse_spark`):
+
+| | Glimmer 30B local (Oct 31) | Muse Spark 1.3 API |
+| --- | --- | --- |
+| accuracy (eval) | 97% (34/35) | 100% (35/35) |
+| verified on first attempt | 80% | 100% |
+| median / mean / max | 21.1 / 23.9 / 73.6 s | 7.3 / 8.4 / 29.8 s |
+| all 35 questions | 836 s | 294 s |
+| per model call | 4.8 s | 2.1 s |
+| start-up | 4 s cached, up to 6 min cold | none |
+| cost | electricity | 132 calls, 458k prompt + 35k completion tokens, about $0.72 |
+
+Read by hand: Spark's wording is cleaner (no field names). One weak answer: Tamil "my bag" named a plastic bag from the
+Oct 29 walk instead of the backpack (the eval accepts plastic bag). Glimmer's numbers exclude its start-up.
+

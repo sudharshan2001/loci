@@ -11,6 +11,7 @@ Uses a running Glimmer server if there is one (start it once for the whole run).
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import logging
 import re
@@ -23,6 +24,7 @@ from rapidfuzz import fuzz
 
 from loci.agent.agent import ask
 from loci.agent.tools import Memory, split_uid
+from loci.cloud import meta_api
 from loci.config import load_config, repo_path
 from loci.llm import glimmer_server
 from loci.stages.store import connect
@@ -86,8 +88,9 @@ def score(item: dict, ans: dict, mem: Memory) -> tuple[bool, str]:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("questions", type=Path)
-    ap.add_argument("--out", type=Path, default=Path("eval/results.md"))
+    ap.add_argument("--out", type=Path, default=None, help="default eval/results.md (results_muse_spark.md)")
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--agent", choices=["glimmer", "muse_spark"], default="glimmer", help="muse_spark: Meta API")
     args = ap.parse_args()
     logging.basicConfig(level=logging.WARNING)
 
@@ -98,7 +101,13 @@ def main() -> None:
     mem = Memory(connect(repo_path(load_config()["paths"]["memory_db"])))
 
     rows = []
-    with glimmer_server(repo_path("debug") / "glimmer_eval.log") as url:
+    out = args.out or Path("eval/results.md" if args.agent == "glimmer" else "eval/results_muse_spark.md")
+    server = (
+        glimmer_server(repo_path("debug") / "glimmer_eval.log")
+        if args.agent == "glimmer"
+        else contextlib.nullcontext(meta_api.BASE_URL)
+    )
+    with server as url:
         for it in items:
             t = time.perf_counter()
             try:
@@ -134,7 +143,9 @@ def main() -> None:
         f"- refusals correct: {sum(r['ok'] for r in ref)}/{len(ref)}",
         f"- verified on first attempt: {first:.0%}",
         f"- median latency: {lat:.1f} s",
-        "- cloud calls: 0 (local only)",
+        f"- agent: {'Muse Glimmer 30B, local' if args.agent == 'glimmer' else meta_api.MODEL + ', Meta Model API'}",
+        f"- cloud calls: {meta_api.USAGE['calls']} ({meta_api.USAGE['prompt_tokens']} prompt, "
+        f"{meta_api.USAGE['completion_tokens']} completion tokens)",
         "",
         "| | question | answer | why | s |",
         "| --- | --- | --- | --- | --- |",
@@ -142,10 +153,10 @@ def main() -> None:
     for r in rows:
         a = (r["answer"] or "").replace("|", "/").replace("\n", " ")
         lines.append(f"| {'✅' if r['ok'] else '❌'} | {r['q']} | {a} | {r['why']} | {r['latency_s']} |")
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text("\n".join(lines) + "\n")
-    (args.out.with_suffix(".json")).write_text(json.dumps(rows, indent=2, ensure_ascii=False))
-    print(f"\naccuracy {acc:.0%}, median latency {lat:.1f}s -> {args.out}")
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text("\n".join(lines) + "\n")
+    (out.with_suffix(".json")).write_text(json.dumps(rows, indent=2, ensure_ascii=False))
+    print(f"\naccuracy {acc:.0%}, median latency {lat:.1f}s -> {out}")
 
 
 if __name__ == "__main__":

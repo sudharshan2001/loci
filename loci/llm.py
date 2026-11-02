@@ -133,6 +133,10 @@ def chat(base_url: str, messages: list[dict], strength: str = "low", retries: in
     Reasoning strength goes at the top of the (single) system message. Server errors are retried: at
     temperature 1.0 the model occasionally emits a malformed tool call that llama.cpp rejects with a 500.
     """
+    from loci.cloud import meta_api
+
+    if meta_api.is_meta(base_url):
+        return meta_api.chat(messages, strength=strength, **kw)
     head = f"Reasoning strength: {strength}"
     if messages and messages[0]["role"] == "system":
         messages = [{"role": "system", "content": f"{head}\n\n{messages[0]['content']}"}, *messages[1:]]

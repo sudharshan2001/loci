@@ -14,6 +14,7 @@ from typing import Any
 
 from loci.agent.tools import Memory, fmt_time, split_uid
 from loci.agent.verify import verify
+from loci.cloud import meta_api
 from loci.llm import chat, extract_json
 
 log = logging.getLogger(__name__)
@@ -436,6 +437,7 @@ def ask(
             problems = ["agent did not produce a final answer"]
         else:
             ans = complete(ans, mem)
+            ans["used_cloud"] = bool(ans.get("used_cloud")) or meta_api.is_meta(base_url)
             ans["answer"] = clean_answer(str(ans.get("answer") or ""))
             problems = verify(ans, mem) + language_problems(question, str(ans.get("answer") or ""))
             if not problems:

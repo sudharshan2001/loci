@@ -23,3 +23,6 @@ __pycache__/
 
 # self-eval on third-party POC clips stays local
 eval/poc_*
+
+# API key file (never commit)
+api.txt
