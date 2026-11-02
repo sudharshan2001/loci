@@ -312,3 +312,12 @@ Same 35 questions, same memory, same tools and verifier (`scripts/eval.py --agen
 Read by hand: Spark's wording is cleaner (no field names). One weak answer: Tamil "my bag" named a plastic bag from the
 Oct 29 walk instead of the backpack (the eval accepts plastic bag). Glimmer's numbers exclude its start-up.
 
+## Nov 3 – Glimmer on the NVMe drive
+
+The Glimmer GGUFs moved from the data HDD to the NVMe drive (`checkpoints/glimmer` is a symlink, no path changed).
+Server start, cold (files evicted from the page cache): **13.2 s** (was 50–354 s from the HDD); warm 4.1 s (unchanged).
+Eval from the NVMe: 97% (34/35), refusals 5/5, verified on first attempt 86%, median 19.9 s (was 21.1 s), 5.0 s per model
+call (was 4.8 s). Answer time is GPU-bound, so the drive only changes start-up: about 40–340 s saved per Glimmer start,
+twice per home build and once per eval or `serve`. The only fail is still the laundry false fail.
+SAM 3.1 (3.3 GB) and MapAnything (4.6 GB) still load from the HDD (geometry: 152 s load for 10 s of inference).
+
