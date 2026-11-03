@@ -56,6 +56,11 @@ def time_problems(text: str, seen_at: str | None, oid: str, related: set[str], m
         if any(n and n.lower() in text for n in names):
             rows.append(other)
     spans = [s for r in rows for s in _seen_spans(r)]
+    # a spoken note's time is when it was said ("you said ... at 0:12"), not when the object was seen
+    spans += [
+        (u["start_s"], u["end_s"])
+        for u in mem.con.execute("SELECT start_s, end_s FROM utterances WHERE session_id=?", (row["session_id"],))
+    ]
     wrong = [k for k, t in said.items() if not any(a - TIME_TOLERANCE_S <= t <= b + TIME_TOLERANCE_S for a, b in spans)]
     if not wrong:
         return []

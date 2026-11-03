@@ -27,6 +27,8 @@ models:
     n_gpu_layers: 99
   whisper:
     size: small
+  muse_voice:  # Meta Model API; used when providers.transcriber is muse_voice (home audio only)
+    language_bias: [English, Tamil, Kannada]
 
 providers:
   namer: glimmer

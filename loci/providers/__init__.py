@@ -24,10 +24,15 @@ def get_vision_checker(base_url: str) -> VisionChecker:
     raise ValueError(f"unknown vision checker {kind!r}")
 
 
-def get_transcriber() -> Transcriber:
-    kind = load_config()["providers"]["transcriber"]
+def get_transcriber(kind: str | None = None) -> Transcriber:
+    kind = kind or load_config()["providers"]["transcriber"]
     if kind == "faster_whisper":
         from loci.providers.whisper import FasterWhisperTranscriber
 
         return FasterWhisperTranscriber(load_config()["models"]["whisper"]["size"])
+    if kind == "muse_voice":
+        from loci.providers.muse_voice import MuseVoiceTranscriber
+
+        voice = load_config()["models"].get("muse_voice", {})
+        return MuseVoiceTranscriber(voice.get("language_bias"), voice.get("keywords"))
     raise ValueError(f"unknown transcriber {kind!r}")

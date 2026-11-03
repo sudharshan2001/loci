@@ -14,6 +14,7 @@ import logging
 import os
 import random
 import time
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -67,6 +68,63 @@ def _cache_path(body: dict[str, Any]):
     return repo_path(load_config()["paths"]["cache"]) / "meta_api" / f"{h}.json"
 
 
+def _post(path: str, **kw: Any) -> requests.Response:
+    """POST with retries on 429/5xx and network errors; raises with the status on any other failure."""
+    headers = {"Authorization": f"Bearer {_key()}"}
+    for attempt in range(MAX_ATTEMPTS):
+        try:
+            r = requests.post(f"{BASE_URL}{path}", headers=headers, timeout=TIMEOUT_S, **kw)
+        except requests.RequestException as e:
+            if attempt == MAX_ATTEMPTS - 1:
+                raise RuntimeError(f"Meta API unreachable: {type(e).__name__}") from None
+            time.sleep(0.5 * 2**attempt + random.random() * 0.25)
+            continue
+        if (r.status_code == 429 or r.status_code >= 500) and attempt < MAX_ATTEMPTS - 1:
+            wait = float(r.headers.get("Retry-After") or 0.5 * 2**attempt + random.random() * 0.25)
+            log.warning("Meta API %d (attempt %d), retrying in %.1fs", r.status_code, attempt + 1, wait)
+            time.sleep(wait)
+            continue
+        break
+    if r.status_code != 200:
+        raise RuntimeError(f"Meta API error {r.status_code}: {r.text[:300]}")
+    return r
+
+
+VOICE_MODEL = "muse-voice-transcribe-1.0"
+
+
+def transcribe(wav: Path, language_bias: list[str] | None = None, keywords: list[str] | None = None) -> dict[str, Any]:
+    """Muse Voice Transcribe, file mode with turns (16 kHz mono 16-bit WAV, at most 10 min / 32 MB).
+
+    Returns the TranscribeResponse: transcript, audioDurationMs, turns [{turnId, startMs, endMs, transcript}].
+    """
+    if not enabled():
+        raise RuntimeError("cloud is off (cloud.enabled: false); set it or LOCI_CLOUD=1 to call the Meta API")
+    req: dict[str, Any] = {"model": VOICE_MODEL, "audioEncoding": "WAV", "mode": "ENDPOINTING"}
+    if language_bias:
+        req["languageBias"] = language_bias
+    if keywords:
+        req["keywords"] = keywords
+    audio = Path(wav).read_bytes()
+    h = hashlib.sha256(audio + json.dumps(req, sort_keys=True).encode()).hexdigest()
+    cache = repo_path(load_config()["paths"]["cache"]) / "meta_api" / f"asr_{h}.json"
+    if cache.exists():
+        USAGE["cache_hits"] += 1
+        return json.loads(cache.read_text())
+    r = _post(
+        "/asr/transcribe",
+        files={
+            "request": (None, json.dumps(req), "application/json"),
+            "audio": (Path(wav).name, audio, "audio/wav"),
+        },
+    )
+    USAGE["calls"] += 1
+    data = r.json()
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    cache.write_text(json.dumps(data, ensure_ascii=False))
+    return data
+
+
 def chat(messages: list[dict], strength: str = "low", model: str = MODEL, **kw: Any) -> dict[str, Any]:
     """One chat completion; returns choices[0].message (content, tool_calls)."""
     if not enabled():
@@ -76,26 +134,7 @@ def chat(messages: list[dict], strength: str = "low", model: str = MODEL, **kw: 
     if cache.exists():
         USAGE["cache_hits"] += 1
         return json.loads(cache.read_text())
-    headers = {"Authorization": f"Bearer {_key()}"}
-    for attempt in range(MAX_ATTEMPTS):
-        try:
-            r = requests.post(f"{BASE_URL}/chat/completions", json=body, headers=headers, timeout=TIMEOUT_S)
-        except requests.RequestException as e:
-            if attempt == MAX_ATTEMPTS - 1:
-                raise RuntimeError(f"Meta API unreachable: {type(e).__name__}") from None
-            time.sleep(0.5 * 2**attempt + random.random() * 0.25)
-            continue
-        if r.status_code == 429 or r.status_code >= 500:
-            if attempt == MAX_ATTEMPTS - 1:
-                break
-            wait = float(r.headers.get("Retry-After") or 0.5 * 2**attempt + random.random() * 0.25)
-            log.warning("Meta API %d (attempt %d), retrying in %.1fs", r.status_code, attempt + 1, wait)
-            time.sleep(wait)
-            continue
-        break
-    if r.status_code != 200:
-        raise RuntimeError(f"Meta API error {r.status_code}: {r.text[:300]}")
-    data = r.json()
+    data = _post("/chat/completions", json=body).json()
     usage = data.get("usage") or {}
     USAGE["calls"] += 1
     USAGE["prompt_tokens"] += usage.get("prompt_tokens") or 0

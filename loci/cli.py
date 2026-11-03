@@ -201,13 +201,20 @@ def attributes(
 
 
 @app.command()
-def transcribe(session: str) -> None:
+def transcribe(
+    session: str, using: str | None = typer.Option(None, "--with", help="faster_whisper | muse_voice (Meta API)")
+) -> None:
     """Stage 10: transcribe audio and link utterances to objects in view."""
     from loci.providers import get_transcriber
     from loci.stages import transcribe as stage
 
     s = _session(session)
-    res = stage.run(s, get_transcriber())
+    kind = using or _cfg()["providers"]["transcriber"]
+    # street audio carries passers-by's voices, which cannot be blurred: it never leaves the machine
+    if kind == "muse_voice" and s.scene() == "street":
+        log.warning("street session: transcribing locally, street audio is not sent to the cloud")
+        kind = "faster_whisper"
+    res = stage.run(s, get_transcriber(kind))
     for u in res["utterances"]:
         typer.echo(f"  {u['start_s']:6.1f}s  {u['text']}")
 

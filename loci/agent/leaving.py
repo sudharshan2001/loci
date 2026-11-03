@@ -45,7 +45,8 @@ ALERT_STATES = {"burner_lit": 0.6, "water_running": 0.6, "light_on": 0.7, "fan_o
 PROMPT = """You are Loci's leaving check. The user just finished walking through a place (capture {sid}). \
 Below are facts from that capture. Decide which ones are worth a short heads-up as they leave, for example a \
 burner or iron left on, a tap running, a window left open, small valuables left somewhere, or a promise they \
-said out loud ("water this tomorrow"). Skip anything ordinary. At most 4 alerts, the most serious first, one per fact.
+said out loud ("water this tomorrow"). Every "state" fact is something left on: always include each one, first. \
+Then choose among the items and notes; skip anything ordinary. At most 5 alerts, one per fact.
 
 Rules: state alerts must say when it was seen, e.g. "The left burner was lit when you left the kitchen at \
 0:31". Never claim the state now. Name a room only if the fact gives one; otherwise say "as of 0:31". Use only ids \

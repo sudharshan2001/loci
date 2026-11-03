@@ -233,3 +233,10 @@ def test_times_may_come_from_other_things_named(mem: Memory) -> None:
     assert verify(ans, mem) == []
     # a clock time on a sign is not a capture time
     assert not [p for p in verify({**ans, "answer": "Your keys, seen at 0:31, open at 10:30 am."}, mem) if "10:30" in p]
+
+
+def test_a_note_may_give_the_time_it_was_said(mem: Memory) -> None:
+    mem.con.execute("INSERT INTO utterances (session_id, idx, start_s, end_s, text) VALUES ('home', 0, 12, 14, 'x')")
+    ans = {"answer": "You said you'd move the keys at 0:12.", "object_id": "home:keys_1", "evidence": ["obs_keys_1"]}
+    assert verify(ans, mem) == []
+    assert any("0:50" in p for p in verify({**ans, "answer": "You said it at 0:50."}, mem))
