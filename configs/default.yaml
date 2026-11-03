@@ -86,7 +86,7 @@ associate:
 
 demo:
   # serve verified answers from data/answer_cache.json (fill it with `loci warm eval/questions.yaml`)
-  cache_answers: false
+  cache_answers: true
 
 geometry:
   # MapAnything views per chunk (~13 GB at 80, ~12 GB at 60, ~11 GB at 20) and frames shared between chunks
