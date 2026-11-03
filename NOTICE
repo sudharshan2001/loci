@@ -13,4 +13,10 @@ Shipped pipeline:
   Apache License 2.0. Code: github.com/facebookresearch/map-anything.
 - Muse Glimmer 30B GGUF (unsloth/Muse-Glimmer-30B-GGUF) - agent, local vision, object naming.
   Apache License 2.0. Served with llama.cpp (MIT).
-- faster-whisper (MIT) - offline speech fallback only.
+- faster-whisper (MIT) - offline speech fallback (cloud off) and street audio, which never leaves the machine.
+
+Meta Model API (cloud, optional; everything also runs with LOCI_CLOUD=0):
+- Muse Spark 1.3 (muse-spark-1.3, Standard mode) - answers questions when cloud is on, with Glimmer on device
+  as the fallback. Receives questions, memory tool results and redacted crops only.
+- Muse Voice Transcribe 1.0 (muse-voice-transcribe-1.0) - speech in home captures and spoken questions.
+Used under the Meta Model API terms (https://dev.meta.ai/docs/overview).

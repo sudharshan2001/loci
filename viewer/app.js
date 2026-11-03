@@ -133,9 +133,10 @@ async function loadSession(sid) {
     layers.add(grid);
   }
 
-  // street: a marker and name for every read shop sign
+  // street: a marker and name for every place in the shop list (clear names only, one per shop)
   if (current.scene === "street") {
-    for (const o of current.objects.filter((o) => o.text)) {
+    const places = new Set(current.places || []);
+    for (const o of current.objects.filter((o) => o.text && places.has(o.object_id))) {
       const p = cv(o.centroid);
       const pin = new THREE.Mesh(new THREE.SphereGeometry(0.25, 12, 12), new THREE.MeshBasicMaterial({ color: 0xe6ebf2 }));
       pin.position.copy(p);
@@ -308,10 +309,13 @@ function showAnswer(ans) {
     ans.latency_s ? `<span class="badge">${ans.latency_s}s</span>` : "",
   ].join("");
 
-  const ev = ((ans.evidence || [])[0] || "").split(":").pop();  // ids may be "<capture>:obs_..."
-  $("evidence").hidden = !ev;
-  if (ev && ans.session) {
-    $("evimg").src = `/evidence/${ans.session}/${ev}.jpg`;
+  // ids may be "<capture>:obs_..."; a summary answer (no object) names its capture only in the evidence id
+  const ev0 = (ans.evidence || [])[0] || "";
+  const ev = ev0.split(":").pop();
+  const evSession = ev0.includes(":") ? ev0.slice(0, ev0.lastIndexOf(":")) : ans.session;
+  $("evidence").hidden = !ev || !evSession;
+  if (ev && evSession) {
+    $("evimg").src = `/evidence/${evSession}/${ev}.jpg`;
     $("evcap").textContent = `Redacted frame${ans.seen_at ? ` · seen at ${ans.seen_at}` : ""} · ${ev}`;
   }
   const facts = [["where", ans.location_text], ["seen at", ans.seen_at],

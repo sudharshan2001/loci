@@ -670,7 +670,8 @@ class Memory:
                     default=p,
                 )
                 p["spelled"] = likely["row"]
-            top = sorted(places, key=lambda p: -p["seen"])[:per_walk]
+            # unnamed shop fronts only fill what is left: a short walk has stalls with no sign, a long one has names
+            top = sorted(places, key=lambda p: (not p["name"], -p["seen"]))[:per_walk]
             out += sorted(top, key=lambda p: p["row"]["distance_along_walk_m"])
         return [
             {

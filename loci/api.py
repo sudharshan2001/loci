@@ -203,6 +203,8 @@ def scene(sid: str) -> dict[str, Any]:
             }
             for o in objs
         ],
+        # street: the clean list of places passed (one marker per shop, misreadings folded, only clear names)
+        "places": [p["id"].split(":", 1)[1] for p in _db().places_passed(sid)] if s.scene() == "street" else [],
     }
 
 

@@ -21,8 +21,8 @@
       expect: [laptop stand, stand]
     - q: "Is the stove on?"
       note: no lit stove in this capture; a correct answer says no state is recorded or names the stove with as-of time
-    - q: "Are the lights on?"  # no ceiling or lamp is in these walks: saying none was seen is the right answer
-      refuse: true
+    - q: "Are the lights on?"  # home3 (Nov 3) saw the hallway and room lights on
+      expect: [light]
     - q: "How far is the desk from the door?"
       note: metres, sanity range 1-5 m
     - q: "Where's my passport?"
@@ -37,6 +37,20 @@
       expect: [backpack, bag, plastic bag]
     - q: "What changed in my home since the first capture?"  # home -> home2 (stove went off)
       note: should mention the stove (lit in the first capture, off in the second); checked by hand
+
+- clip: home3.mp4   # Nov 3 evening, 62 s, spoken notes in English and Tamil, fans switched on and off
+  scene: home
+  questions:
+    - q: "What did I say about the plant?"
+      expect: [potted plant, plant]
+    - q: "Did I leave the fan on?"
+      expect: [ceiling fan, fan]
+    - q: "What do I have to do tomorrow?"
+      note: water the plants, change the gas gasket, take out the trash (Tamil); checked by hand
+    - q: "குப்பை பற்றி நான் என்ன சொன்னேன்?"  # Tamil: what did I say about the trash?
+      note: the Tamil note at 0:39, take out the trash tomorrow; checked by hand
+    - q: "Where's my water bottle?"
+      expect: [water bottle, bottle]
 
 - clip: street.mp4
   scene: street
