@@ -96,6 +96,12 @@ def yours(name: str | None) -> str | None:
     return f"your {name[3:]}" if name and name.lower().startswith("my ") else name
 
 
+def latin(text: str) -> bool:
+    """Mostly Latin letters (English) rather than Tamil/Kannada script."""
+    letters = [c for c in text if c.isalpha()]
+    return sum(c.isascii() for c in letters) >= len(letters) / 2
+
+
 def norm(phrase: str) -> str:
     return " ".join(singular(w) for w in phrase.lower().split())
 
@@ -724,7 +730,9 @@ class Memory:
                 for x in links  # type: ignore[index]
             ]
             label_hit = max((fuzz.partial_ratio(text.lower(), lab) for lab in linked_labels), default=0)
-            if max(score, label_hit) >= 60:
+            # "trash" never fuzzy-matches "குப்பை": a note in another script is offered for the agent to read itself
+            other_script = latin(text) != latin(u["text"])
+            if max(score, label_hit) >= 60 or other_script:
                 out.append(
                     {
                         "session": u["session_id"],
@@ -732,6 +740,7 @@ class Memory:
                         "text": u["text"],
                         "objects_in_view": [f"{u['session_id']}:{x['object_id']}" for x in links[:5]],
                         "match": max(score, label_hit),
+                        **({"note": "said in another language: read it and judge"} if other_script else {}),
                     }
                 )
         return sorted(out, key=lambda x: -x["match"])

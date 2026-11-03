@@ -321,3 +321,21 @@ call (was 4.8 s). Answer time is GPU-bound, so the drive only changes start-up: 
 twice per home build and once per eval or `serve`. The only fail is still the laundry false fail.
 SAM 3.1 (3.3 GB) and MapAnything (4.6 GB) still load from the HDD (geometry: 152 s load for 10 s of inference).
 
+## Nov 3 – home3 (62 s, speech in English and Tamil, fans), Muse Voice Transcribe
+
+Build 29 min (attributes 727 s, geometry 294 s, track 238 s); room frame joined `home`. 54 keyframes.
+Speech, same audio:
+- faster-whisper: detected Malayalam; "gas cascade"; the Tamil line came out as "I have to take a bath tomorrow".
+- Muse Voice Transcribe (languageBias English+Tamil): "gas casket", "நாளைக்கு குப்பை எடுக்கணும்" (take out the trash
+  tomorrow). With Kannada also in the bias it wrote the Tamil words in Kannada script. 62.6 s of audio, about 0.3 cents.
+Muse Voice is now the default transcriber when cloud is on; faster-whisper when it is off, and always for street audio.
+Fans: dark fan spinning at 0:19 stored on (twice, a duplicate), cream fan still at 0:50 stored off; both right by eye.
+Leaving check: states that are on are always flagged first (the fan was skipped for notes before), up to 5 alerts; a
+note's time is when it was said (the time check dropped the gasket note before). Alerts: hallway light on at 0:24,
+ceiling fan on at 0:20, water the plants, gas casket, trash (Tamil).
+Notes in another script than the question are offered to the agent ("trash" never fuzzy-matches "குப்பை").
+Muse Spark answers on home3: plant note, fan on, closest plant to the PC (4.5 m), tomorrow's three tasks, the Tamil
+trash note, stove, keys refused (no keys in home3). 14–30 s each: the API itself was slower today (4–5 s for a
+one-word reply, 2.6 s on Nov 2).
+Known: many keyframes only "room" (no room name for the fan), one fan stored twice, no keys in any capture.
+

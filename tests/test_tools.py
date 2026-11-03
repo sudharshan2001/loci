@@ -350,3 +350,14 @@ def test_my_bag_finds_a_backpack_before_plastic_bags() -> None:
     assert mem.search_objects("plastic bag")[0]["id"] == "am:plastic_bag_1"
     # one way only: a purse is not a backpack
     assert "am:backpack_1" not in [o["id"] for o in mem.search_objects("purse")]
+
+
+def test_notes_in_another_script_are_offered() -> None:
+    mem = _mem()
+    mem.con.execute(
+        "INSERT INTO utterances (session_id, idx, start_s, end_s, text) VALUES "
+        "('am', 0, 1, 2, 'I will water the plants tomorrow.'), ('am', 1, 5, 6, 'நாளைக்கு குப்பை எடுக்கணும்.')"
+    )
+    said = [n["text"] for n in mem.search_notes("trash")]
+    assert said == ["நாளைக்கு குப்பை எடுக்கணும்."]
+    assert [n["text"] for n in mem.search_notes("குப்பை")][0].startswith("நாளைக்கு")

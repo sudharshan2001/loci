@@ -214,6 +214,11 @@ def transcribe(
     if kind == "muse_voice" and s.scene() == "street":
         log.warning("street session: transcribing locally, street audio is not sent to the cloud")
         kind = "faster_whisper"
+    from loci.cloud import meta_api
+
+    if kind == "muse_voice" and not meta_api.enabled():
+        log.info("cloud is off: transcribing locally with faster-whisper")
+        kind = "faster_whisper"
     res = stage.run(s, get_transcriber(kind))
     for u in res["utterances"]:
         typer.echo(f"  {u['start_s']:6.1f}s  {u['text']}")

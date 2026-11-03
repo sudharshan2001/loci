@@ -28,12 +28,12 @@ models:
   whisper:
     size: small
   muse_voice:  # Meta Model API; used when providers.transcriber is muse_voice (home audio only)
-    language_bias: [English, Tamil, Kannada]
+    language_bias: [English, Tamil]  # the speaker's languages; Kannada here wrote Tamil speech in Kannada script
 
 providers:
   namer: glimmer
   vision_checker: glimmer
-  transcriber: faster_whisper
+  transcriber: muse_voice  # Meta Muse Voice Transcribe when cloud is on; faster-whisper otherwise and for street audio
 
 extract:
   max_keyframes: 0  # 0 = follow the walk's length: ~1 per second, 60..360 (geometry runs in chunks)
