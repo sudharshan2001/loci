@@ -46,6 +46,11 @@ def score(item: dict, ans: dict, mem: Memory) -> tuple[bool, str]:
     oid = ans.get("object_id")
     if item.get("refuse"):
         return oid is None, "refused" if oid is None else f"answered {label_of(mem, oid)}"
+    # a spoken note cites no object ("you said ... at 0:39"): questions checked by hand only need a real answer
+    if not (item.get("expect") or item.get("state") or item.get("expect_text")) and item.get("note"):
+        if SAYS_NOT_SEEN.search(ans.get("answer") or "") or not ans.get("verified"):
+            return False, "not answered"
+        return True, "no expectation (manual check)"
     if oid is None and not ans.get("objects") and not ans.get("evidence"):
         return False, "refused"
     if SAYS_NOT_SEEN.search(ans.get("answer") or ""):  # cites an object, but tells the person it was not seen

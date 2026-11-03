@@ -79,7 +79,15 @@ prints the GGUF the server has loaded, its hash, the GPU, and one verified answe
 Measured on the developer's own captures (two home walks, one evening home walk with speech, two street walks).
 Numbers and every answer: `eval/results.md`, `eval/results_muse_spark.md`, `PROGRESS.md`.
 
-<!-- RESULTS -->
+40 questions (home, home2, home3, street, street2; English, Kannada, Tamil; 4 refusals), same memory, tools and
+verifier:
+
+| Agent | Correct (read by hand) | Verified on first try | Median answer time |
+| --- | --- | --- | --- |
+| Muse Spark 1.3 (cloud) | 40/40 | 100% | 12.8 s |
+| Muse Glimmer 30B (on device) | 39/40 | 83% | 21.1 s |
+
+Glimmer's miss: "Is the laundry done?" ended as "not sure" with the last sighting, which is the designed fallback.
 
 Metric scale, checked by tape and map: office to the Lenovo shop 260 m real, 278 m in Loci (+7%); desk to door
 1.5 m real, 1.6 m in Loci (+7%).

@@ -339,3 +339,23 @@ trash note, stove, keys refused (no keys in home3). 14–30 s each: the API itse
 one-word reply, 2.6 s on Nov 2).
 Known: many keyframes only "room" (no room name for the fan), one fan stored twice, no keys in any capture.
 
+## Nov 4 – routing, redaction check, viewer, docs, 40-question eval
+
+- Answering: Muse Spark when cloud is on, Glimmer on device when it is off or a call fails (tested both ways).
+  `cloud.enabled: true` by default now; `LOCI_CLOUD=0` is fully on device.
+- Redaction checked by eye on every saved keyframe of home, home2, home3, street, street2 (about 530): no visible face,
+  plate or screen content; signs readable. home3 has 22 faces and 10 screens blurred.
+- Viewer checked in headless Chromium on the demo questions. Fixed: the street map labelled ~400 signs including
+  "Illegible" and phone numbers; it now shows the 40 places of the shop list. Summary answers showed a broken photo.
+- Shop list: unnamed shop fronts only fill slots left after named places.
+- `verify_open_weights.py`: Muse-Glimmer-30B-UD-Q3_K_XL.gguf on the RTX 4080 SUPER answered the fan question, verified,
+  used_cloud false, 43.5 s.
+- README, `docs/demo_script.md` (Lenovo for the shop question, keys dropped), NOTICE with Muse Spark and Voice.
+- home3's 3D: 54 keyframes, coach says unreliable (fast turns). A 119-keyframe trial was worse (broken), so kept 54;
+  distances in home3 are not used in the demo.
+
+Eval, 40 questions: Muse Spark 39/40 scored, median 12.8 s; Glimmer 38/40, median 21.1 s. By reading: Spark 40/40,
+Glimmer 39/40. The Tamil trash note was right in both but scored "refused" (note answers cite no object); the eval now
+scores hand-checked questions by whether they answered. Glimmer's laundry answer ended "not sure". Spark paraphrased the
+gasket note as "gas cylinder".
+
