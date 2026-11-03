@@ -318,21 +318,27 @@ def build(
 @app.command()
 def ask(
     question: str,
-    no_cloud: bool = typer.Option(True, "--no-cloud/--cloud", help="Phase 1: local only"),
+    cloud: bool | None = typer.Option(None, "--cloud/--no-cloud", help="default: cloud.enabled in the config"),
     show_trace: bool = typer.Option(False, "--trace"),
 ) -> None:
     """Ask the memory a question (searches every session)."""
     import json
+    from contextlib import ExitStack
 
-    from loci.agent.agent import ask as run_ask
+    from loci.agent.agent import answer
     from loci.agent.tools import Memory
     from loci.config import repo_path
     from loci.llm import glimmer_server
     from loci.stages.store import connect
 
     con = connect(repo_path(_cfg()["paths"]["memory_db"]))
-    with glimmer_server(repo_path("debug") / "glimmer_ask.log") as url:
-        ans = run_ask(question, Memory(con), url)
+    with ExitStack() as stack:
+        ans = answer(
+            question,
+            Memory(con),
+            lambda: stack.enter_context(glimmer_server(repo_path("debug") / "glimmer_ask.log")),
+            cloud=cloud,
+        )
     trace = ans.pop("trace", [])
     typer.echo(f"\n{ans['answer']}\n")
     typer.echo(json.dumps({k: v for k, v in ans.items() if k != "answer"}, indent=2, ensure_ascii=False))
@@ -380,10 +386,13 @@ def forget(object_id: str, yes: bool = typer.Option(False, "--yes", help="confir
 @app.command()
 def warm(questions: Path = typer.Argument(..., exists=True)) -> None:
     """Pre-answer a question file into the demo answer cache (turn on demo.cache_answers to serve from it)."""
+    from contextlib import ExitStack
+    from functools import cache
+
     import yaml
 
     from loci import answer_cache
-    from loci.agent.agent import ask as run_ask
+    from loci.agent.agent import answer
     from loci.agent.tools import Memory
     from loci.config import repo_path
     from loci.llm import glimmer_server
@@ -392,9 +401,10 @@ def warm(questions: Path = typer.Argument(..., exists=True)) -> None:
     spec = yaml.safe_load(questions.read_text())
     qs = [q["q"] for c in spec for q in c["questions"]] if isinstance(spec[0], dict) else list(spec)
     mem = Memory(connect(repo_path(_cfg()["paths"]["memory_db"])))
-    with glimmer_server(repo_path("debug") / "glimmer_warm.log") as url:
+    with ExitStack() as stack:
+        glimmer = cache(lambda: stack.enter_context(glimmer_server(repo_path("debug") / "glimmer_warm.log")))
         for q in qs:
-            ans = run_ask(q, mem, url)
+            ans = answer(q, mem, glimmer)
             answer_cache.put(q, mem.con, ans)
             typer.echo(f"{'cached' if ans.get('verified') else 'NOT cached (unverified)'}: {q}")
 

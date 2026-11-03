@@ -21,7 +21,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from loci.agent.agent import ask
+from loci.agent.agent import answer
 from loci.agent.tools import Memory, fmt_time
 from loci.config import load_config, repo_path
 from loci.evidence import render
@@ -80,7 +80,7 @@ def ask_text(q: Question) -> dict[str, Any]:
     use_cache = load_config().get("demo", {}).get("cache_answers", False)
     if use_cache and (hit := answer_cache.get(q.question, mem.con)):
         return hit
-    ans = ask(q.question, mem, _glimmer())
+    ans = answer(q.question, mem, _glimmer)
     if use_cache:
         answer_cache.put(q.question, mem.con, ans)
     ans["question"] = q.question
@@ -99,15 +99,26 @@ async def ask_audio(audio: UploadFile = File(...)) -> dict[str, Any]:
         subprocess.run(
             ["ffmpeg", "-v", "error", "-y", "-i", str(raw), "-ac", "1", "-ar", "16000", str(wav)], check=True
         )
-        if "transcriber" not in STATE:
-            STATE["transcriber"] = FasterWhisperTranscriber(load_config()["models"]["whisper"]["size"], device="cpu")
-        utts = STATE["transcriber"].transcribe(wav)
+        from loci.cloud import meta_api
+
+        if meta_api.enabled():  # the asker's own voice: Muse Voice Transcribe, any of its 25 languages
+            from loci.providers.muse_voice import MuseVoiceTranscriber
+
+            heard_by = "Muse Voice Transcribe (cloud)"
+            utts = MuseVoiceTranscriber(load_config()["models"]["muse_voice"].get("language_bias")).transcribe(wav)
+        else:
+            if "transcriber" not in STATE:
+                STATE["transcriber"] = FasterWhisperTranscriber(
+                    load_config()["models"]["whisper"]["size"], device="cpu"
+                )
+            heard_by = "faster-whisper (local)"
+            utts = STATE["transcriber"].transcribe(wav)
     question = " ".join(u.text for u in utts).strip()
     if not question:
         raise HTTPException(422, "no speech recognised")
-    ans = ask(question, _db(), _glimmer())
+    ans = answer(question, _db(), _glimmer)
     ans["question"] = question
-    ans["transcriber"] = "faster-whisper (local)"
+    ans["transcriber"] = heard_by
     return ans
 
 

@@ -3,7 +3,7 @@
 OpenAI-compatible chat completions at https://api.meta.ai/v1 (Muse Spark). Retries with backoff on 429 and 5xx
 (honouring Retry-After), a timeout on every request, a disk cache keyed by the request body, and the key read
 from MODEL_API_KEY (environment or the repo's .env). The key is never logged or printed.
-Calls are refused unless cloud.enabled is true or LOCI_CLOUD=1, so --no-cloud runs make none.
+Calls are refused unless cloud.enabled is true (LOCI_CLOUD=1/0 overrides), so --no-cloud runs make none.
 """
 
 from __future__ import annotations
@@ -37,7 +37,11 @@ def is_meta(base_url: str | None) -> bool:
 
 
 def enabled() -> bool:
-    return bool(load_config().get("cloud", {}).get("enabled")) or os.environ.get("LOCI_CLOUD") == "1"
+    """cloud.enabled in the config; LOCI_CLOUD=1 or 0 overrides it (0 = --no-cloud for every stage and answer)."""
+    env = os.environ.get("LOCI_CLOUD")
+    if env in ("0", "1"):
+        return env == "1"
+    return bool(load_config().get("cloud", {}).get("enabled"))
 
 
 def _key() -> str:

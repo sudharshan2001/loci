@@ -8,7 +8,8 @@ paths:
   checkpoints: checkpoints
 
 cloud:
-  enabled: false   # Phase 1: no Meta Model API calls at all
+  # Muse Spark answers, Muse Voice transcribes home audio; Glimmer does the rest. LOCI_CLOUD=0 = fully on device.
+  enabled: true
 
 models:
   sam3:

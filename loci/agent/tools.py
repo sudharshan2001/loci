@@ -304,6 +304,12 @@ class Memory:
                 "match": round(s, 1),
                 **({"seen_as": a} if (a := seen_as.get((r["session_id"], r["object_id"]))) else {}),
                 **({"things_on": n} if (n := things_on.get((r["session_id"], r["object_id"]))) else {}),
+                # "did I leave the fan on?" with two fans: each one's state, so one seen off does not hide one left on
+                **(
+                    {"state": st, "state_seen_at": fmt_time(r["state_seen_at"])}
+                    if r["state"] and (st := json.loads(r["state"]))
+                    else {}
+                ),
             }
             for s, r in scored[:limit]
         ]

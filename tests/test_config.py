@@ -3,8 +3,36 @@ from loci.config import load_config, repo_path
 
 def test_default_config_loads() -> None:
     cfg = load_config()
-    assert cfg["cloud"]["enabled"] is False
+    assert isinstance(cfg["cloud"]["enabled"], bool)
     assert {"home", "street"} <= set(cfg["scenes"])
+
+
+def test_no_cloud_env_wins(monkeypatch) -> None:
+    from loci.agent.agent import answer
+    from loci.cloud import meta_api
+
+    monkeypatch.setenv("LOCI_CLOUD", "0")
+    assert not meta_api.enabled()
+    # with cloud off, the device answers: the Glimmer path is taken without any Meta call
+    calls = []
+    monkeypatch.setattr("loci.agent.agent.ask", lambda q, mem, url: calls.append(url) or {"answer": "ok"})
+    answer("where?", None, lambda: "http://local")
+    assert calls == ["http://local"]
+
+
+def test_cloud_failure_falls_back_to_the_device(monkeypatch) -> None:
+    from loci.agent.agent import answer
+    from loci.cloud import meta_api
+
+    monkeypatch.setenv("LOCI_CLOUD", "1")
+
+    def fake_ask(q, mem, url):
+        if url == meta_api.BASE_URL:
+            raise RuntimeError("Meta API unreachable")
+        return {"answer": "ok", "url": url}
+
+    monkeypatch.setattr("loci.agent.agent.ask", fake_ask)
+    assert answer("where?", None, lambda: "http://local")["url"] == "http://local"
 
 
 def test_street_does_not_redact_documents() -> None:

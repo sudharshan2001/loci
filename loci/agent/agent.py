@@ -10,6 +10,7 @@ import json
 import logging
 import re
 import time
+from collections.abc import Callable
 from typing import Any
 
 from loci.agent.tools import Memory, fmt_time, split_uid
@@ -33,7 +34,9 @@ the kitchen at 0:31, ..." or "as of 0:31". Never say what the state is now.
 - "Where did I leave X?" / "Is X still there?": call last_known. Answer from the newest sighting with its \
 capture time; if it is movable and the sighting is old, say so ("that was this morning; keys move, so check").
 - A place can change between captures. For state questions call state_history and answer from the newest \
-capture, giving its time; if an older capture differs, mention it ("it was off in the morning capture").
+capture, giving its time; if an older capture differs, mention it ("it was off in the morning capture"). If \
+that capture has several of the thing (two fans), "did I leave it on?" is yes when any one was on: say which \
+was on and which was off, each with its time.
 - "What changed / moved since ...": call list_captures, then what_changed with the earlier and the later \
 capture of that place. Answer from its result without more tools: state changes first (the stove was lit, now \
 off, with was_seen_at and now_seen_at), then what moved. If nothing moved, say so. Things in seen_only lists: name \
@@ -464,4 +467,18 @@ def ask(
     return out
 
 
-__all__ = ["ask", "fmt_time"]
+def answer(question: str, mem: Memory, glimmer_url: Callable[[], str], cloud: bool | None = None) -> dict[str, Any]:
+    """Muse Spark answers when cloud is on and reachable; Glimmer (on device) when it is off or the call fails.
+
+    glimmer_url starts or reuses the local server, so a cloud answer never needs the GPU.
+    """
+    use_cloud = meta_api.enabled() if cloud is None else cloud and meta_api.enabled()
+    if use_cloud:
+        try:
+            return ask(question, mem, meta_api.BASE_URL)
+        except Exception as e:  # network, rate limit, server error: the device still answers
+            log.warning("Muse Spark failed (%s); answering on device with Glimmer", e)
+    return ask(question, mem, glimmer_url())
+
+
+__all__ = ["answer", "ask", "fmt_time"]
