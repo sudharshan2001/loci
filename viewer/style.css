@@ -33,8 +33,6 @@ select { padding: 6px 10px; }
 #mic.rec { color: var(--warn); border-color: var(--warn); }
 .askbar.busy #go { opacity: 0.6; }
 
-.quality.good { color: var(--ok); }
-.quality.unreliable, .quality.broken { color: var(--warn); cursor: help; }
 .legend { pointer-events: auto; }
 .legend { position: absolute; right: 16px; top: 16px; color: var(--muted); font-size: 12px; text-align: right; }
 

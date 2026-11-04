@@ -154,15 +154,6 @@ async function loadSession(sid) {
   controls.target.copy(c);
   camera.near = r / 500; camera.far = r * 20; camera.updateProjectionMatrix();
   $("legend").textContent = `${current.objects.length} objects · ${geo.attributes.position.count.toLocaleString()} points`;
-  api(`/quality/${sid}`).then((q) => {
-    if (!q.reconstruction) return;
-    const v = q.reconstruction.verdict;
-    const tag = document.createElement("span");
-    tag.className = `quality ${v}`;
-    tag.textContent = ` · 3D ${v}`;
-    tag.title = q.tips.join("\n");  // the capture coach's advice
-    $("legend").appendChild(tag);
-  }).catch(() => {});
   await loadPrivacy(sid);
   await loadAlerts(sid);
 }
