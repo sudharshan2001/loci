@@ -26,3 +26,12 @@ eval/poc_*
 
 # API key file (never commit)
 api.txt
+
+# local notes, prompts, results and tool caches stay on this machine
+CLAUDE.md
+.claude/
+PROGRESS.md
+improvement.md
+docs/
+eval/
+answer_cache.json

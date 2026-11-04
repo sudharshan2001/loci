@@ -85,7 +85,7 @@ associate:
   home: {adjacent_gap_s: 0.8, adjacent_dist_m: 1.2}
 
 demo:
-  # serve verified answers from data/answer_cache.json (fill it with `loci warm eval/questions.yaml`)
+  # serve verified answers from data/answer_cache.json (fill it with `loci warm <questions.yaml>`)
   cache_answers: true
 
 geometry:

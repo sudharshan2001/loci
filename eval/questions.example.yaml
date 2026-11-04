@@ -1,0 +1,7 @@
+# Format for `python scripts/eval.py <file>`: one entry per capture, with the questions to ask about it.
+- clip: my_home_walk
+  scene: home
+  questions:
+    - {q: "Did I leave the stove on?", state: {on: true}}
+    - {q: "Where are my plants?", expect: [potted plant]}
+    - {q: "Where is my passport?", refuse: true}

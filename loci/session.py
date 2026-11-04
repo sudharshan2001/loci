@@ -22,7 +22,7 @@ class Session:
     def id(self) -> str:
         return self.root.name
 
-    # files and folders, as laid out in CLAUDE.md section 6
+    # files and folders
     raw_dir = property(lambda self: self.root / "raw_tmp")
     keyframes_dir = property(lambda self: self.root / "keyframes")
     keyframes_json = property(lambda self: self.root / "keyframes.json")

@@ -8,9 +8,7 @@ finds the objects, reads shop signs, notes the state of things like a lit stove 
 say, and places everything in 3D with metric scale. Then ask:
 
 - "Did I leave the stove on?" → *"When you left the kitchen at 0:15, the right burner was lit."* + the frame it saw
-- "What do I have to do tomorrow?" → *"Water the plants, change the gas casket, take out the trash."* (the last one
-  said in Tamil)
-- "Where was Lenovo?" → *"On your left, about 278 m into the walk, at 4:41."* + the signboard frame
+- "Where was <shop name>?" → *"On your left, about 280 m into the walk, at 4:41."* + the signboard frame
 - "Where's my passport?" → *"I haven't seen a passport in any capture."*
 
 Every answer cites the observations it used, is checked by a verifier against the memory before you see it, says
@@ -35,7 +33,7 @@ the GPU at a time. Every model output is cached on disk.
 | Camera poses, metric depth | MapAnything (Apache) | your GPU |
 | Object names, rooms, sign reading, states, leaving check, offline answers | **Muse Glimmer 30B** (GGUF, llama.cpp) | your GPU |
 | Answers when online | Muse Spark 1.3 | Meta Model API |
-| Speech (English, Tamil, Kannada and more, mixed in one walk) | Muse Voice Transcribe 1.0 | Meta Model API |
+| Speech (25 languages, mixed in one walk) | Muse Voice Transcribe 1.0 | Meta Model API |
 | Speech offline, and all street audio | faster-whisper | your machine |
 
 Cloud is optional: `LOCI_CLOUD=0` (or `cloud.enabled: false`) runs everything on device. When cloud is on and a
@@ -74,29 +72,11 @@ prints the GGUF the server has loaded, its hash, the GPU, and one verified answe
 - `loci forget <object> --yes` blurs an object out of the stored frames, cuts its 3D points and deletes its
   evidence.
 
-## Results
-
-Measured on the developer's own captures (two home walks, one evening home walk with speech, two street walks).
-Numbers and every answer: `eval/results.md`, `eval/results_muse_spark.md`, `PROGRESS.md`.
-
-40 questions (home, home2, home3, street, street2; English, Kannada, Tamil; 4 refusals), same memory, tools and
-verifier:
-
-| Agent | Correct (read by hand) | Verified on first try | Median answer time |
-| --- | --- | --- | --- |
-| Muse Spark 1.3 (cloud) | 40/40 | 100% | 12.8 s |
-| Muse Glimmer 30B (on device) | 39/40 | 83% | 21.1 s |
-
-Glimmer's miss: "Is the laundry done?" ended as "not sure" with the last sighting, which is the designed fallback.
-
-Metric scale, checked by tape and map: office to the Lenovo shop 260 m real, 278 m in Loci (+7%); desk to door
-1.5 m real, 1.6 m in Loci (+7%).
-
 ## Quick start
 
 ```bash
 uv sync
-uv run loci build data/raw/home.mp4 --scene home        # ~30 min for a 1-minute walk
+uv run loci build data/raw/home.mp4 --scene home        # # builds the memory; about 30 min for a 1-minute walk on one 16 GB GPU
 uv run loci ask "Did I leave the stove on?"
 uv run loci serve                                        # viewer at http://127.0.0.1:8000
 ```
@@ -107,31 +87,10 @@ in `.env`.
 
 ## Limits
 
-- Built after the walk, not live: about 30 minutes for a 1-minute home walk on one GPU (answers take seconds).
+- Built after the walk, not live (answers take seconds).
 - Fast turns break the 3D: walk slowly and turn over 2–3 seconds (`loci coach` says which parts to re-walk).
 - Rooms are named from single frames and are sometimes left unnamed rather than guessed.
 
-## Built during the hackathon (Oct 27 – Nov 4, 2026)
+## Licence
 
-Solo project. All code in this repository was written during the Meta Global AI Developer Hackathon build period
-(first commit Oct 27); the commit history shows the progress day by day, and `PROGRESS.md` logs each milestone with
-its measured numbers.
-
-**Built during the hackathon (everything in `loci/`, `viewer/`, `scripts/`, `tests/`, `eval/`):**
-- the capture pipeline: motion-aware keyframes, privacy redaction before anything is saved, object naming, tracking,
-  2D-to-3D lifting with each model's resize and crop handled, object association across frames, spatial relations
-  (on, near, left of; side of the road and distance along a walk), sign reading and state checks, speech linking
-- the memory (SQLite) and its 14 agent tools, including what changed between captures, object permanence across
-  captures, routes along a walk and spoken-note search
-- the answer verifier (citations, positions, relations, states, times, sign names), with retry and "not sure" fallback
-- the leaving-check agent, Spark/Glimmer routing with on-device fallback, the Meta Model API client
-- room-frame registration of home captures, the robot floor grid and A* path, the capture coach, forget
-- the FastAPI server and the three.js viewer
-- the evaluation: 40 questions on my own walks, in English, Kannada and Tamil
-
-**Used, not built:** the models (Muse Glimmer, Muse Spark, Muse Voice Transcribe, SAM 3.1, MapAnything), and
-libraries installed as dependencies (llama.cpp, faster-whisper, PyTorch, FastAPI, three.js and others in
-`pyproject.toml`). SAM 3.1 and MapAnything are installed from their own repositories, not copied in. All footage is
-my own and is not in the repository.
-
-Licence: Apache 2.0 (see `LICENSE`, and `NOTICE` for the models).
+Apache 2.0 (see `LICENSE`, and `NOTICE` for the models).
