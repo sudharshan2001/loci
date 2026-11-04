@@ -294,10 +294,8 @@ function showAnswer(ans) {
   $("answer").textContent = ans.answer;
   const conf = Math.round((ans.confidence || 0) * 100);
   $("badges").innerHTML = [
-    ans.used_cloud ? `<span class="badge cloud">Muse Spark (cloud)</span>` : `<span class="badge local">Glimmer · on device</span>`,
-    ans.verified ? `<span class="badge ok">verified</span>` : `<span class="badge unsure">not sure</span>`,
+    ans.verified ? "" : `<span class="badge unsure">not sure</span>`,
     `<span class="badge">${conf}% confidence</span>`,
-    ans.latency_s ? `<span class="badge">${ans.latency_s}s</span>` : "",
   ].join("");
 
   // ids may be "<capture>:obs_..."; a summary answer (no object) names its capture only in the evidence id
