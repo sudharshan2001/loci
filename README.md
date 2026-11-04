@@ -91,6 +91,13 @@ in `.env`.
 - Fast turns break the 3D: walk slowly and turn over 2–3 seconds (`loci coach` says which parts to re-walk).
 - Rooms are named from single frames and are sometimes left unnamed rather than guessed.
 
+## Sources
+
+- Footage and reference material (my own captures): https://drive.google.com/drive/folders/1gZw-ZienpvXf26vkPsznLQY8My-XTtVr?usp=sharing
+- Map reference for the street-walk distance check (walking route to the Lenovo Exclusive Store, Marathahalli,
+  Bengaluru): https://www.google.com/maps/dir/12.9568802,77.7008672/Lenovo+Exclusive+Store+-+Systech+IT+Solutions,+NO+850+SIGMA+ARCADE+2,+Near,+Tulsi+Theater+Rd,+Marathahalli,+Bengaluru,+Karnataka+560037/@12.9569465,77.6987028,19z/data=!4m14!4m13!1m5!3m4!1m2!1d77.6983896!2d12.9569173!3s0x3bae13ccc6bf1ac7:0x2a903b5be6bf6ad9!1m5!1m1!1s0x3bae1233113688b1:0x27418247f1bb69b3!2m2!1d77.6982928!2d12.956832!3e2
+- Evaluation questions and answers: `eval/` (`questions.yaml`, `results.md`, `results_muse_spark.md`)
+
 ## Licence
 
 Apache 2.0 (see `LICENSE`, and `NOTICE` for the models).
