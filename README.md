@@ -113,5 +113,25 @@ in `.env`.
 
 ## Built during the hackathon (Oct 27 – Nov 4, 2026)
 
-Everything in this repository was written during the Meta Global AI Developer Hackathon build period. Licence:
-Apache 2.0 (see `LICENSE` and `NOTICE` for the models).
+Solo project. All code in this repository was written during the Meta Global AI Developer Hackathon build period
+(first commit Oct 27); the commit history shows the progress day by day, and `PROGRESS.md` logs each milestone with
+its measured numbers.
+
+**Built during the hackathon (everything in `loci/`, `viewer/`, `scripts/`, `tests/`, `eval/`):**
+- the capture pipeline: motion-aware keyframes, privacy redaction before anything is saved, object naming, tracking,
+  2D-to-3D lifting with each model's resize and crop handled, object association across frames, spatial relations
+  (on, near, left of; side of the road and distance along a walk), sign reading and state checks, speech linking
+- the memory (SQLite) and its 14 agent tools, including what changed between captures, object permanence across
+  captures, routes along a walk and spoken-note search
+- the answer verifier (citations, positions, relations, states, times, sign names), with retry and "not sure" fallback
+- the leaving-check agent, Spark/Glimmer routing with on-device fallback, the Meta Model API client
+- room-frame registration of home captures, the robot floor grid and A* path, the capture coach, forget
+- the FastAPI server and the three.js viewer
+- the evaluation: 40 questions on my own walks, in English, Kannada and Tamil
+
+**Used, not built:** the models (Muse Glimmer, Muse Spark, Muse Voice Transcribe, SAM 3.1, MapAnything), and
+libraries installed as dependencies (llama.cpp, faster-whisper, PyTorch, FastAPI, three.js and others in
+`pyproject.toml`). SAM 3.1 and MapAnything are installed from their own repositories, not copied in. All footage is
+my own and is not in the repository.
+
+Licence: Apache 2.0 (see `LICENSE`, and `NOTICE` for the models).
